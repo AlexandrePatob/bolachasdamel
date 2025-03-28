@@ -7,6 +7,20 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
   description: 'As melhores bolachas artesanais feitas com amor e carinho.',
+  openGraph: {
+    title: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
+    description: 'As melhores bolachas artesanais feitas com amor e carinho.',
+    url: 'https://www.bolachasdamel.com.br/',
+    siteName: 'Bolachas da Mel',
+    images: [
+      {
+        url: 'https://www.bolachasdamel.com.br/imagem-preview.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
