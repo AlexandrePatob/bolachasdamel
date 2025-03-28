@@ -61,6 +61,20 @@ const products: Product[] = [
     description: "4 biscoitos cacau e mel",
     price: 11.0,
     image: "/images/regalo.jpg",
+  },
+  {
+    id: 7,
+    name: "Páscoa Boa",
+    description: "6 bolachas sortidas",
+    price: 14.0,
+    image: "/images/pascoa-boa.jpg",
+  },
+  {
+    id: 8,
+    name: "Feliz Páscoa",
+    description: "6 palitos amanteigados com ou sem chocolate",
+    price: 16.0,
+    image: "/images/feliz-pascoa.jpg",
   }
 ];
 
