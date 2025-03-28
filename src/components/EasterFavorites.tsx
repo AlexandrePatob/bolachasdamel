@@ -24,10 +24,10 @@ const favorites = [
   },
   {
     id: 2,
-    name: "Para não passar em branco",
-    description: "4 bolachas sortidas: 2 amanteigados e 2 cacau com chocolate",
-    price: 8.0,
-    image: "/images/para-nao-passar-em-branco.jpg",
+    name: "Feliz Páscoa",
+    description: "6 palitos amanteigados com ou sem chocolate",
+    price: 16.0,
+    image: "/images/feliz-pascoa.jpg",
   },
 ];
 
