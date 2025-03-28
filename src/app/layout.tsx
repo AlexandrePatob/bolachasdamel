@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     siteName: 'Bolachas da Mel',
     images: [
       {
-        url: 'https://www.bolachasdamel.com.br/imagem-preview.jpg',
+        url: 'https://www.bolachasdamel.com.br/image-preview.jpg',
         width: 1200,
         height: 630,
         alt: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
