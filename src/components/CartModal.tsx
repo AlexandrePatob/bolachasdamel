@@ -2,25 +2,22 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
-}
+import { toast } from "react-hot-toast";
+import { CartItem } from "@/types/cart";
 
 interface CartModalProps {
   isOpen: boolean;
   onClose: () => void;
   items: CartItem[];
-  onUpdateQuantity: (id: number, quantity: number) => void;
-  onRemoveItem: (id: number) => void;
+  onUpdateQuantity: (id: string, quantity: number) => void;
+  onRemoveItem: (id: string) => void;
+  onClearCart: () => void;
 }
 
 interface CustomerData {
   name: string;
+  email: string;
+  phone: string;
   address: string;
   number: string;
 }
@@ -31,38 +28,82 @@ const CartModal = ({
   items,
   onUpdateQuantity,
   onRemoveItem,
+  onClearCart,
 }: CartModalProps) => {
   const [step, setStep] = useState<"cart" | "form">("cart");
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: "",
+    email: "",
+    phone: "",
     address: "",
     number: "",
   });
+  const [loading, setLoading] = useState(false);
 
   const total = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-  const handleCustomerDataSubmit = (e: React.FormEvent) => {
+  const handleCustomerDataSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const message =
-      `Olá! Gostaria de fazer um pedido:%0A%0A` +
-      `Nome: ${customerData.name}%0A` +
-      `Endereço: ${customerData.address}, ${customerData.number}%0A%0A` +
-      `Pedido:%0A` +
-      items
-        .map(
-          (item) =>
-            `${item.name} - ${item.quantity}x - R$ ${(
-              item.price * item.quantity
-            ).toFixed(2)}`
-        )
-        .join("%0A") +
-      `%0A%0ATotal: R$ ${total.toFixed(2)}`;
+    setLoading(true);
 
-    window.open(`https://wa.me/554198038007?text=${message}`, "_blank");
-    onClose();
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer: customerData,
+          items: items.map(item => ({
+            id: item.id,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao criar pedido');
+      }
+
+      const data = await response.json();
+      
+      // Limpa o carrinho após sucesso
+      onClearCart();
+      
+      // Fecha o modal
+      onClose();
+      
+      // Abre o WhatsApp
+      const message =
+        `Olá! Gostaria de fazer um pedido:%0A%0A` +
+        `Nome: ${customerData.name}%0A` +
+        `Email: ${customerData.email}%0A` +
+        `Telefone: ${customerData.phone}%0A` +
+        `Endereço: ${customerData.address}, ${customerData.number}%0A%0A` +
+        `Pedido:%0A` +
+        items
+          .map(
+            (item) =>
+              `${item.name} - ${item.quantity}x - R$ ${(
+                item.price * item.quantity
+              ).toFixed(2)}`
+          )
+          .join("%0A") +
+        `%0A%0ATotal: R$ ${total.toFixed(2)}`;
+
+      window.open(`https://wa.me/554198038007?text=${message}`, "_blank");
+      
+      toast.success('Pedido enviado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao criar pedido:', error);
+      toast.error('Erro ao enviar pedido. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProceedToForm = () => {
@@ -224,6 +265,53 @@ const CartModal = ({
                       placeholder="Seu nome completo"
                     />
                   </div>
+
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      required
+                      value={customerData.email}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          email: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="phone"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      required
+                      value={customerData.phone}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          phone: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                      placeholder="(41) 99999-9999"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-3 gap-4">
                     <div className="col-span-2">
                       <label
@@ -270,6 +358,7 @@ const CartModal = ({
                       />
                     </div>
                   </div>
+
                   <div className="flex space-x-4">
                     <button
                       type="button"
@@ -280,9 +369,10 @@ const CartModal = ({
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 bg-green-500 text-white py-3 rounded-full hover:bg-green-600 transition-colors duration-300 flex items-center justify-center space-x-2"
+                      disabled={loading}
+                      className="flex-1 bg-green-500 text-white py-3 rounded-full hover:bg-green-600 transition-colors duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span>Enviar Pedido</span>
+                      <span>{loading ? 'Enviando...' : 'Enviar Pedido'}</span>
                       <span>💬</span>
                     </button>
                   </div>

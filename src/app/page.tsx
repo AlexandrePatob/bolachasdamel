@@ -10,14 +10,7 @@ import Navigation from "../components/Navigation";
 import CartModal from "../components/CartModal";
 import CartIcon from "../components/CartIcon";
 import { motion } from "framer-motion";
-
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
-}
+import { CartItem } from "@/types/cart";
 
 export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -25,7 +18,7 @@ export default function Home() {
   const [isNewItem, setIsNewItem] = useState(false);
 
   const handleOrderClick = (product: {
-    id: number;
+    id: string;
     name: string;
     price: number;
     image: string;
@@ -52,7 +45,7 @@ export default function Home() {
     }
   };
 
-  const handleUpdateQuantity = (id: number, quantity: number) => {
+  const handleUpdateQuantity = (id: string, quantity: number) => {
     setCartItems((prevItems) =>
       prevItems
         .map((item) => (item.id === id ? { ...item, quantity } : item))
@@ -60,8 +53,12 @@ export default function Home() {
     );
   };
 
-  const handleRemoveItem = (id: number) => {
+  const handleRemoveItem = (id: string) => {
     setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
   };
 
   const tabs = [
@@ -136,6 +133,7 @@ export default function Home() {
           items={cartItems}
           onUpdateQuantity={handleUpdateQuantity}
           onRemoveItem={handleRemoveItem}
+          onClearCart={handleClearCart}
         />
       </motion.main>
     </>

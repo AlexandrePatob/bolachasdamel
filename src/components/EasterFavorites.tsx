@@ -1,40 +1,48 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { Product } from "@/types/database";
 
 interface EasterFavoritesProps {
   onOrderClick: (product: {
-    id: number;
+    id: string;
     name: string;
     price: number;
     image: string;
   }) => void;
 }
 
-const favorites = [
-  {
-    id: 1,
-    name: "Só um mimo",
-    description: "Bolacha amanteigado Páscoa ou coelho.",
-    price: 3.0,
-    image: "/images/so-um-mimo.jpg",
-    isBestSeller: true,
-  },
-  {
-    id: 2,
-    name: "Feliz Páscoa",
-    description: "6 palitos amanteigados com ou sem chocolate",
-    price: 16.0,
-    image: "/images/feliz-pascoa.jpg",
-  },
-];
-
 const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAddToCart = (product: any) => {
-    onOrderClick(product);
+  const [favorites, setFavorites] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const response = await fetch('/api/products/favorites');
+        if (!response.ok) throw new Error('Failed to fetch favorites');
+        const data = await response.json();
+        setFavorites(data);
+      } catch (error) {
+        console.error('Error fetching favorites:', error);
+        toast.error('Erro ao carregar favoritos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFavorites();
+  }, []);
+
+  const handleAddToCart = (product: Product) => {
+    onOrderClick({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image || ''
+    });
     toast.success(`${product.name} Adicionado ao carrinho!`, {
       duration: 2000,
       icon: "🛒",
@@ -45,6 +53,14 @@ const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
       },
     });
   };
+
+  if (loading) {
+    return (
+      <section className="w-full py-16">
+      </section>
+    );
+  }
+
   return (
     <section className="w-full py-16">
       <div className="container mx-auto px-4">
@@ -67,17 +83,12 @@ const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
               <div className="relative w-full aspect-[4/3] mb-6">
                 <div className="absolute inset-0 rounded-xl overflow-hidden border-4 border-pink-100">
                   <Image
-                    src={product.image}
+                    src={product.image || ''}
                     alt={product.name}
                     fill
                     className="object-cover"
                   />
                 </div>
-                {product.isBestSeller && (
-                  <div className="absolute -top-2 -right-2 bg-rose-200 text-rose-700 rounded-full px-2 py-0.5 text-xs font-medium">
-                    Mais vendido
-                  </div>
-                )}
               </div>
               <div className="text-center flex flex-col flex-1 w-full">
                 <h3 className="text-xl font-semibold text-pink-600 mb-2">
