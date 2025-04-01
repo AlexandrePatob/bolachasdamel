@@ -41,7 +41,7 @@ export default function Cart() {
       <CartModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        items={items}
+        items={items as import('@/lib/cart').CartItem[]}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}

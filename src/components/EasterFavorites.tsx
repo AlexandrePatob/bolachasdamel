@@ -4,30 +4,36 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { Product } from "@/types/database";
+import ChocolateOptionModal from "./ChocolateOptionModal";
 
 interface EasterFavoritesProps {
   onOrderClick: (product: {
     id: string;
+    product_id: string;
     name: string;
     price: number;
     image: string;
+    has_chocolate_option: boolean;
+    has_chocolate: boolean;
   }) => void;
 }
 
 const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showChocolateModal, setShowChocolateModal] = useState(false);
 
   useEffect(() => {
     const fetchFavorites = async () => {
       try {
-        const response = await fetch('/api/products/favorites');
-        if (!response.ok) throw new Error('Failed to fetch favorites');
+        const response = await fetch("/api/products/favorites");
+        if (!response.ok) throw new Error("Failed to fetch favorites");
         const data = await response.json();
         setFavorites(data);
       } catch (error) {
-        console.error('Error fetching favorites:', error);
-        toast.error('Erro ao carregar favoritos');
+        console.error("Error fetching favorites:", error);
+        toast.error("Erro ao carregar favoritos");
       } finally {
         setLoading(false);
       }
@@ -37,13 +43,45 @@ const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
   }, []);
 
   const handleAddToCart = (product: Product) => {
+    if (product.has_chocolate_option) {
+      setSelectedProduct(product);
+      setShowChocolateModal(true);
+    } else {
+      onOrderClick({
+        id: product.id,
+        product_id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image || "",
+        has_chocolate_option: false,
+        has_chocolate: false,
+      });
+      toast.success(`${product.name} Adicionado ao carrinho!`, {
+        duration: 2000,
+        icon: "🛒",
+        style: {
+          background: "#FDF2F8",
+          color: "#BE185D",
+          border: "1px solid #FBCFE8",
+        },
+      });
+    }
+  };
+
+  const handleChocolateOption = (hasChocolate: boolean) => {
+    if (!selectedProduct) return;
+
     onOrderClick({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image || ''
+      id: selectedProduct.id,
+      product_id: selectedProduct.id,
+      name: selectedProduct.name,
+      price: selectedProduct.price,
+      image: selectedProduct.image || "",
+      has_chocolate_option: true,
+      has_chocolate: hasChocolate,
     });
-    toast.success(`${product.name} Adicionado ao carrinho!`, {
+
+    toast.success(`${selectedProduct.name} Adicionado ao carrinho!`, {
       duration: 2000,
       icon: "🛒",
       style: {
@@ -52,13 +90,13 @@ const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
         border: "1px solid #FBCFE8",
       },
     });
+
+    setShowChocolateModal(false);
+    setSelectedProduct(null);
   };
 
   if (loading) {
-    return (
-      <section className="w-full py-16">
-      </section>
-    );
+    return <section className="w-full py-16"></section>;
   }
 
   return (
@@ -83,7 +121,7 @@ const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
               <div className="relative w-full aspect-[4/3] mb-6">
                 <div className="absolute inset-0 rounded-xl overflow-hidden border-4 border-pink-100">
                   <Image
-                    src={product.image || ''}
+                    src={product.image || ""}
                     alt={product.name}
                     fill
                     className="object-cover"
@@ -116,6 +154,16 @@ const EasterFavorites = ({ onOrderClick }: EasterFavoritesProps) => {
           ))}
         </div>
       </div>
+
+      <ChocolateOptionModal
+        isOpen={showChocolateModal}
+        onClose={() => {
+          setShowChocolateModal(false);
+          setSelectedProduct(null);
+        }}
+        onConfirm={handleChocolateOption}
+        product={selectedProduct || { name: "", image: "" }}
+      />
     </section>
   );
 };
