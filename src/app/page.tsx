@@ -10,7 +10,6 @@ import Navigation from "../components/Navigation";
 import CartModal from "../components/CartModal";
 import CartIcon from "../components/CartIcon";
 import { motion } from "framer-motion";
-import { Toaster } from "react-hot-toast";
 
 interface CartItem {
   id: number;
@@ -23,6 +22,7 @@ interface CartItem {
 export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isNewItem, setIsNewItem] = useState(false);
 
   const handleOrderClick = (product: {
     id: number;
@@ -41,7 +41,15 @@ export default function Home() {
       }
       return [...prevItems, { ...product, quantity: 1 }];
     });
-    //setIsCartOpen(true);
+
+    // If this is the first item, open the cart
+    if (cartItems.length === 0) {
+      setIsCartOpen(true);
+    } else {
+      // Otherwise, trigger the animation
+      setIsNewItem(true);
+      setTimeout(() => setIsNewItem(false), 300);
+    }
   };
 
   const handleUpdateQuantity = (id: number, quantity: number) => {
@@ -76,18 +84,6 @@ export default function Home() {
 
   return (
     <>
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          position: 'top-right',
-          duration: 1700,
-          style: {
-            background: "#FDF2F8",
-            color: "#BE185D",
-            border: "1px solid #FBCFE8",
-          },
-        }}
-      />
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -131,6 +127,7 @@ export default function Home() {
           <CartIcon
             itemCount={cartItems.length}
             onClick={() => setIsCartOpen(true)}
+            isNewItem={isNewItem}
           />
         </motion.div>
         <CartModal

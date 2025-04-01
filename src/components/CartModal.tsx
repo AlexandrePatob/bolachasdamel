@@ -175,6 +175,13 @@ const CartModal = ({
                             R$ {total.toFixed(2)}
                           </span>
                         </div>
+                        
+                        <div className="mb-4 p-4 bg-pink-50 rounded-lg border border-pink-100">
+                          <p className="text-pink-700 text-sm">
+                            ℹ️ O valor do frete e a forma de pagamento serão combinados via WhatsApp após a confirmação do pedido.
+                          </p>
+                        </div>
+
                         <div className="flex flex-col gap-3">
                           <button
                             onClick={handleProceedToForm}
