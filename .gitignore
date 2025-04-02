@@ -26,6 +26,7 @@
 *.zip
 *.rar
 *.7z
+*.mjs
 
 # debug
 npm-debug.log*
@@ -58,4 +59,8 @@ next-env.d.ts
 ehthumbs.db
 Thumbs.db
 
-.vercel
+# Supabase
+supabase/.temp/
+
+# Prisma
+/prisma/
