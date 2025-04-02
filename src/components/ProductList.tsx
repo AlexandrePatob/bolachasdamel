@@ -48,7 +48,7 @@ const ProductList = ({ onOrderClick }: ProductListProps) => {
         name: product.name,
         price: product.price,
         image: product.image || '',
-        has_chocolate_option: false,
+        has_chocolate_option: product.has_chocolate_option,
         has_chocolate: false,
       });
       toast.success(`${product.name} adicionado ao carrinho!`, {

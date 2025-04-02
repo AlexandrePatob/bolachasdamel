@@ -12,6 +12,9 @@ import CartIcon from "../components/CartIcon";
 import { motion } from "framer-motion";
 import { CartItem } from "@/types/cart";
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -22,6 +25,8 @@ export default function Home() {
     name: string;
     price: number;
     image: string;
+    has_chocolate_option: boolean;
+    has_chocolate: boolean;
   }) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
@@ -32,7 +37,13 @@ export default function Home() {
             : item
         );
       }
-      return [...prevItems, { ...product, quantity: 1 }];
+      return [...prevItems, { 
+        ...product, 
+        quantity: 1,
+        product_id: product.id,
+        has_chocolate_option: product.has_chocolate_option,
+        has_chocolate: product.has_chocolate
+      }];
     });
 
     // If this is the first item, open the cart
