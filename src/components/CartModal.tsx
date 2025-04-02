@@ -63,7 +63,7 @@ const CartModal = ({
         customer_name: customerData.name,
         customer_email: customerData.email,
         customer_phone: customerData.phone,
-        customer_address: customerData.address,
+        customer_address: `${customerData.address}, ${customerData.number}`,
         complement: customerData.complement,
         observations: customerData.observations,
         items: items.map((item) => ({
