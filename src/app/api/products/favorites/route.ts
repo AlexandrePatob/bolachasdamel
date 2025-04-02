@@ -1,14 +1,41 @@
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { getProducts } from '@/lib/supabase';
+
+// Cache por 5 minutos
+export const revalidate = 300;
 
 export async function GET() {
     try {
-        const products = await getProducts();
-        // Filtrar apenas os produtos favoritos (Só um mimo e Feliz Páscoa)
-        const favorites = products.filter(product => 
-            product.name === 'Só um mimo' || product.name === 'Feliz Páscoa'
-        );
-        return NextResponse.json(favorites);
+        const supabase = createRouteHandlerClient({ cookies });
+
+        const { data, error } = await supabase
+            .from('products')
+            .select(`
+                id,
+                name,
+                description,
+                price,
+                image,
+                has_chocolate_option
+            `)
+            .eq('is_available', true)
+            .in('name', ['Só um mimo', 'Feliz Páscoa'])
+            .order('created_at', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching favorite products:', error);
+            return NextResponse.json(
+                { error: 'Failed to fetch favorite products' },
+                { status: 500 }
+            );
+        }
+
+        // Adiciona headers de cache
+        const response = NextResponse.json(data);
+        response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=59');
+        
+        return response;
     } catch (error) {
         console.error('Error fetching favorite products:', error);
         return NextResponse.json(

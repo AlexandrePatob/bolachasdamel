@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -16,25 +16,28 @@ const ProductList = ({ onOrderClick }: ProductListProps) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showChocolateModal, setShowChocolateModal] = useState(false);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('/api/products');
-        if (!response.ok) throw new Error('Failed to fetch products');
-        const data = await response.json();
-        setProducts(data);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        toast.error('Erro ao carregar produtos');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
+  const fetchProducts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/products', {
+        next: { revalidate: 300 }, // Cache por 5 minutos
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast.error('Erro ao carregar produtos');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleAddToCart = (product: Product) => {
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const handleAddToCart = useCallback((product: Product) => {
     if (product.has_chocolate_option) {
       setSelectedProduct(product);
       setShowChocolateModal(true);
@@ -58,9 +61,9 @@ const ProductList = ({ onOrderClick }: ProductListProps) => {
         },
       });
     }
-  };
+  }, [onOrderClick]);
 
-  const handleChocolateOption = (hasChocolate: boolean) => {
+  const handleChocolateOption = useCallback((hasChocolate: boolean) => {
     if (!selectedProduct) return;
 
     onOrderClick({
@@ -85,7 +88,7 @@ const ProductList = ({ onOrderClick }: ProductListProps) => {
 
     setShowChocolateModal(false);
     setSelectedProduct(null);
-  };
+  }, [selectedProduct, onOrderClick]);
 
   if (loading) {
     return (
@@ -150,6 +153,8 @@ const ProductList = ({ onOrderClick }: ProductListProps) => {
                     alt={product.name}
                     fill
                     className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    priority={false}
                   />
                 </div>
               </div>
