@@ -43,6 +43,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (statusFilter === 'all') {
+      console.log('orders', orders);
       setFilteredOrders(orders);
     } else {
       setFilteredOrders(orders.filter(order => order.status === statusFilter));
@@ -298,7 +299,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-pink-100">
-              {filteredOrders.map((order) => (
+              {filteredOrders && filteredOrders?.map((order) => (
                 <tr 
                   key={order.id} 
                   onClick={() => handleOrderClick(order)}
@@ -328,7 +329,7 @@ export default function AdminDashboard() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {order.items.map((item) => (
                       <div key={item.id}>
-                        {item.quantity}x {item.product.name}
+                        {item.quantity}x {item.product?.name}
                       </div>
                     ))}
                   </td>

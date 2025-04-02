@@ -1,32 +1,49 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
 export async function middleware(request: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req: request, res });
-
-  // Verifica se a rota começa com /admin
+  // Verificar se é uma rota do admin
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // Ignorar a página de login
+    if (request.nextUrl.pathname === '/admin/login') {
+      return NextResponse.next();
+    }
 
-    // Se não houver sessão e não estiver na página de login, redireciona
-    if (!session && !request.nextUrl.pathname.startsWith('/admin/login')) {
-      const redirectUrl = new URL('/admin/login', request.url);
-      redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname);
-      return NextResponse.redirect(redirectUrl);
+    // Verificar o token de autenticação
+    const adminToken = request.cookies.get('admin_token')?.value;
+
+    if (!adminToken) {
+      // Redirecionar para a página de login com a URL atual como parâmetro
+      const loginUrl = new URL('/admin/login', request.url);
+      loginUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname);
+
+      return NextResponse.redirect(loginUrl);
+    }
+
+    try {
+      // Verificar se o token é válido
+      const { data: { user }, error } = await supabase.auth.getUser(adminToken);
+
+      if (error || !user) {
+        // Se o token for inválido, redirecionar para a página de login
+        const loginUrl = new URL('/admin/login', request.url);
+        loginUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname);
+
+        return NextResponse.redirect(loginUrl);
+      }
+
+      return NextResponse.next();
+    } catch (error) {
+      console.error('Auth error:', error);
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
   }
 
-  return res;
+  return NextResponse.next();
 }
 
 // Configura em quais caminhos o middleware será executado
 export const config = {
-  matcher: [
-    '/admin/:path*',
-    '/api/admin/:path*',
-  ],
+  matcher: '/admin/:path*',
 }; 

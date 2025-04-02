@@ -1,8 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from "next/navigation";
 import Image from 'next/image';
 
 export default function AdminLayout({
@@ -11,19 +9,12 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        router.push('/admin/login');
-      }
-    };
-
-    checkAuth();
-  }, [router, supabase.auth]);
+  const handleSignOut = () => {
+    // Limpa o cookie de autenticação
+    document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    router.push('/admin/login');
+  };
 
   return (
     <div className="min-h-[75vh] bg-gradient-to-b from-[#ffe9f3] to-white">
@@ -42,10 +33,7 @@ export default function AdminLayout({
               <h1 className="text-xl font-bold text-[#6b4c3b]">Painel Administrativo</h1>
             </div>
             <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.push('/admin/login');
-              }}
+              onClick={handleSignOut}
               className="px-4 py-2 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-300"
             >
               Sair
