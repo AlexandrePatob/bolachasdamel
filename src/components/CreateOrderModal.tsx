@@ -26,6 +26,8 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     phone: '',
     address: '',
     number: '',
+    complement: '',
+    observations: '',
   });
   const [items, setItems] = useState<OrderItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState('');
@@ -92,7 +94,12 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          customer,
+          customer_name: customer.name,
+          customer_email: customer.email,
+          customer_phone: customer.phone,
+          customer_address: customer.address,
+          complement: customer.complement,
+          observations: customer.observations,
           items,
         }),
       });
@@ -211,6 +218,28 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                         required
                         value={customer.number}
                         onChange={(e) => setCustomer({ ...customer, number: e.target.value })}
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
+                        Complemento
+                      </label>
+                      <input
+                        type="text"
+                        value={customer.complement}
+                        onChange={(e) => setCustomer({ ...customer, complement: e.target.value })}
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
+                        Observações
+                      </label>
+                      <textarea
+                        value={customer.observations}
+                        onChange={(e) => setCustomer({ ...customer, observations: e.target.value })}
+                        rows={3}
                         className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                       />
                     </div>
