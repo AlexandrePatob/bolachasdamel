@@ -21,6 +21,7 @@ interface DashboardStats {
 
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +29,19 @@ export default function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (statusFilter === 'all') {
+      setFilteredOrders(orders);
+    } else {
+      setFilteredOrders(orders.filter(order => order.status === statusFilter));
+    }
+  }, [statusFilter, orders]);
 
   const fetchDashboardData = async () => {
     try {
@@ -41,6 +51,7 @@ export default function AdminDashboard() {
       }
       const data = await response.json();
       setOrders(data.orders);
+      setFilteredOrders(data.orders);
       setStats(data.stats);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar dados");
@@ -169,65 +180,54 @@ export default function AdminDashboard() {
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Card principal com métricas gerais */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+          className="bg-white rounded-xl shadow-sm p-4 border border-pink-100 lg:col-span-2"
         >
-          <h3 className="text-sm font-medium text-[#6b4c3b]">Total de Pedidos</h3>
-          <p className="mt-2 text-2xl font-bold text-[#6b4c3b]">
-            {stats?.total_orders || 0}
-          </p>
+          <h3 className="text-sm font-medium text-[#6b4c3b]">Visão Geral</h3>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <p className="text-sm text-gray-500">Total de Pedidos</p>
+              <p className="text-xl font-bold text-[#6b4c3b]">{stats?.total_orders || 0}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Receita Total</p>
+              <p className="text-xl font-bold text-[#6b4c3b]">R$ {stats?.total_revenue.toFixed(2) || "0.00"}</p>
+            </div>
+          </div>
         </motion.div>
 
+        {/* Card de status com dropdown */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
         >
-          <h3 className="text-sm font-medium text-[#6b4c3b]">Receita Total</h3>
-          <p className="mt-2 text-2xl font-bold text-[#6b4c3b]">
-            R$ {stats?.total_revenue.toFixed(2) || "0.00"}
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
-        >
-          <h3 className="text-sm font-medium text-[#6b4c3b]">Pendentes</h3>
-          <p className="mt-2 text-2xl font-bold text-[#6b4c3b]">
-            {stats?.orders_by_status.pending || 0}
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
-        >
-          <h3 className="text-sm font-medium text-[#6b4c3b]">Em Preparo</h3>
-          <p className="mt-2 text-2xl font-bold text-[#6b4c3b]">
-            {stats?.orders_by_status.preparing || 0}
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
-        >
-          <h3 className="text-sm font-medium text-[#6b4c3b]">Concluídos</h3>
-          <p className="mt-2 text-2xl font-bold text-[#6b4c3b]">
-            {stats?.orders_by_status.completed || 0}
-          </p>
+          <h3 className="text-sm font-medium text-[#6b4c3b]">Status dos Pedidos</h3>
+          <div className="relative mt-4">
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')}
+              className="appearance-none w-full bg-white border border-pink-200 rounded-lg px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[#6b4c3b] focus:border-[#6b4c3b] cursor-pointer"
+            >
+              <option value="all" className="py-2">Todos os Status</option>
+              <option value="pending" className="py-2 bg-yellow-50 text-yellow-800">Pendentes ({stats?.orders_by_status.pending || 0})</option>
+              <option value="preparing" className="py-2 bg-blue-50 text-blue-800">Em Preparo ({stats?.orders_by_status.preparing || 0})</option>
+              <option value="completed" className="py-2 bg-green-50 text-green-800">Concluídos ({stats?.orders_by_status.completed || 0})</option>
+              <option value="shipped" className="py-2 bg-purple-50 text-purple-800">Enviados ({stats?.orders_by_status.shipped || 0})</option>
+              <option value="delivered" className="py-2 bg-emerald-50 text-emerald-800">Entregues ({stats?.orders_by_status.delivered || 0})</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-pink-400">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+              </svg>
+            </div>
+          </div>
         </motion.div>
       </div>
 
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-pink-100">
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <tr 
                   key={order.id} 
                   onClick={() => handleOrderClick(order)}
