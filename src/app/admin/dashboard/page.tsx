@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Order, OrderStatus } from "@/types/database";
 import OrderDetailsModal from "@/components/OrderDetailsModal";
 import CreateOrderModal from "@/components/CreateOrderModal";
+import EditShippingFeeModal from "@/components/EditShippingFeeModal";
 import { formatDate } from '@/lib/utils';
 
 interface DashboardStats {
@@ -29,6 +30,8 @@ export default function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditShippingFeeModalOpen, setIsEditShippingFeeModalOpen] = useState(false);
+  const [orderToEditShippingFee, setOrderToEditShippingFee] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
 
   useEffect(() => {
@@ -96,6 +99,23 @@ export default function AdminDashboard() {
   const handleOrderClick = (order: Order) => {
     setSelectedOrder(order);
     setIsDetailsModalOpen(true);
+  };
+
+  const handleOrderUpdated = (updatedOrder: Order) => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) => (order.id === updatedOrder.id ? updatedOrder : order))
+    );
+  };
+
+  const handleShippingFeeEdit = (order: Order) => {
+    setOrderToEditShippingFee(order);
+    setIsEditShippingFeeModalOpen(true);
+  };
+
+  const handleShippingFeeUpdated = (updatedOrder: Order) => {
+    setOrders(prevOrders =>
+      prevOrders.map(o => o.id === updatedOrder.id ? updatedOrder : o)
+    );
   };
 
   if (loading) {
@@ -198,6 +218,18 @@ export default function AdminDashboard() {
               <p className="text-sm text-gray-500">Receita Total</p>
               <p className="text-xl font-bold text-[#6b4c3b]">R$ {stats?.total_revenue.toFixed(2) || "0.00"}</p>
             </div>
+            <div>
+              <p className="text-sm text-gray-500">Pedidos Pendentes</p>
+              <p className="text-xl font-bold text-[#6b4c3b]">
+                {orders.filter(order => order.status === 'pending').length}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Receita Total + Frete</p>
+              <p className="text-xl font-bold text-[#6b4c3b]">
+                R$ {(orders.reduce((sum, order) => sum + order.total_amount + (order.shipping_fee || 0), 0)).toFixed(2)}
+              </p>
+            </div>
           </div>
         </motion.div>
 
@@ -245,13 +277,16 @@ export default function AdminDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
                   Cliente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Itens
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Frete
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Data
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
@@ -300,6 +335,24 @@ export default function AdminDashboard() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <div className="text-sm text-[#6b4c3b]">
+                        R$ {order.shipping_fee?.toFixed(2) || "0.00"}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShippingFeeEdit(order);
+                        }}
+                        className="text-pink-600 hover:text-pink-700"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-xs text-gray-500">
                       {new Date(order.created_at).toLocaleDateString('pt-BR', {
                         day: '2-digit',
@@ -345,6 +398,7 @@ export default function AdminDashboard() {
           setIsDetailsModalOpen(false);
           setSelectedOrder(null);
         }}
+        onOrderUpdated={handleOrderUpdated}
       />
 
       {/* Modal de Criação */}
@@ -352,6 +406,17 @@ export default function AdminDashboard() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onOrderCreated={fetchDashboardData}
+      />
+
+      {/* Modal de Edição do Frete */}
+      <EditShippingFeeModal
+        order={orderToEditShippingFee}
+        isOpen={isEditShippingFeeModalOpen}
+        onClose={() => {
+          setIsEditShippingFeeModalOpen(false);
+          setOrderToEditShippingFee(null);
+        }}
+        onShippingFeeUpdated={handleShippingFeeUpdated}
       />
     </div>
   );

@@ -7,9 +7,10 @@ interface OrderDetailsModalProps {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
+  onOrderUpdated?: (updatedOrder: Order) => void;
 }
 
-export default function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalProps) {
+export default function OrderDetailsModal({ order, isOpen, onClose, onOrderUpdated }: OrderDetailsModalProps) {
   if (!order) return null;
 
   return (
@@ -136,6 +137,10 @@ export default function OrderDetailsModal({ order, isOpen, onClose }: OrderDetai
                       <div className="flex justify-between">
                         <span className="text-[#6b4c3b]">Data do Pedido</span>
                         <span className="text-[#6b4c3b]">{formatDate(order.created_at)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#6b4c3b]">Frete</span>
+                        <span className="text-[#6b4c3b]">R$ {order.shipping_fee?.toFixed(2) || "0.00"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[#6b4c3b]">Status</span>

@@ -5,6 +5,7 @@ export interface CreateOrder {
     total_amount: number;
     delivery_address: string;
     status?: OrderStatus;
+    shipping_fee: number;
 }
 
 export interface Product {
@@ -51,6 +52,7 @@ export interface Order {
     delivery_address: string;
     observations: string | null;
     total_amount: number;
+    shipping_fee: number;
     status: "pending" | "preparing" | "completed" | "shipped" | "delivered";
     created_at: string;
     updated_at: string;
