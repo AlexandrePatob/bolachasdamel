@@ -243,13 +243,7 @@ export default function AdminDashboard() {
             <thead className="bg-pink-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
-                  Data
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
                   Cliente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
-                  Endereço
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
                   Itens
@@ -258,10 +252,10 @@ export default function AdminDashboard() {
                   Total
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
-                  Status
+                  Data
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
-                  Ações
+                  Status
                 </th>
               </tr>
             </thead>
@@ -272,24 +266,26 @@ export default function AdminDashboard() {
                   onClick={() => handleOrderClick(order)}
                   className="cursor-pointer hover:bg-pink-50 transition-colors duration-200"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {formatDate(order.created_at)}
-                  </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-[#6b4c3b]">
-                      {order.customer.name}
-                    </div>
-                    <div className="text-sm text-pink-600">{order.customer.email}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-[#6b4c3b]">
-                      {order.delivery_address}
-                    </div>
-                    {order.customer?.complement && (
-                      <div className="text-sm text-pink-600">
-                        Complemento: {order.customer.complement}
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="text-sm font-medium text-[#6b4c3b]">
+                          {order.customer.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {order.customer.phone}
+                        </div>
                       </div>
-                    )}
+                      <div className="text-sm text-pink-600">
+                        {order.customer.email}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {order.delivery_address}
+                        {order.customer?.complement && (
+                          <span className="text-gray-500"> - {order.customer.complement}</span>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {order.items.map((item) => (
@@ -301,6 +297,17 @@ export default function AdminDashboard() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-[#6b4c3b]">
                       R$ {order.total_amount.toFixed(2)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-xs text-gray-500">
+                      {new Date(order.created_at).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -322,18 +329,6 @@ export default function AdminDashboard() {
                       <option value="shipped" className="bg-purple-50 text-purple-800">Enviado</option>
                       <option value="delivered" className="bg-emerald-50 text-emerald-800">Entregue</option>
                     </select>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[#6b4c3b]">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedOrder(order);
-                        setIsDetailsModalOpen(true);
-                      }}
-                      className="text-pink-600 hover:text-pink-900"
-                    >
-                      Ver detalhes
-                    </button>
                   </td>
                 </tr>
               ))}
