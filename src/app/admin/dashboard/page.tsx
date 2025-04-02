@@ -52,7 +52,6 @@ export default function AdminDashboard() {
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     try {
       setStatusUpdateError(null);
-      console.log("Enviando atualização de status:", { orderId, newStatus });
 
       const response = await fetch(`/api/admin/orders/${orderId}/status`, {
         method: "PATCH",
@@ -63,7 +62,6 @@ export default function AdminDashboard() {
       });
 
       const data = await response.json();
-      console.log("Resposta da API:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Erro ao atualizar status");
