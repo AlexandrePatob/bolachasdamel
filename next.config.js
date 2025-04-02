@@ -1,6 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  output: 'standalone',
+  images: {
+    unoptimized: false,
+  },
+  // Configuração para páginas que precisam ser dinâmicas
+  async rewrites() {
+    return [
+      {
+        source: '/admin/:path*',
+        destination: '/admin/:path*',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig; 

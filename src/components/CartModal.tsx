@@ -1,68 +1,127 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
-}
+import { toast } from "react-hot-toast";
+import { CartItem, clearCart, getCartItems, removeFromCart, updateCartItemQuantity } from "@/lib/cart";
 
 interface CartModalProps {
   isOpen: boolean;
   onClose: () => void;
   items: CartItem[];
-  onUpdateQuantity: (id: number, quantity: number) => void;
-  onRemoveItem: (id: number) => void;
+  onUpdateQuantity: (itemId: string, quantity: number) => void;
+  onRemoveItem: (itemId: string) => void;
+  onClearCart: () => void;
 }
 
 interface CustomerData {
   name: string;
+  email: string;
+  phone: string;
   address: string;
   number: string;
+  complement: string;
+  observations: string;
 }
 
 const CartModal = ({
   isOpen,
   onClose,
-  items,
+  items: initialItems,
   onUpdateQuantity,
   onRemoveItem,
+  onClearCart,
 }: CartModalProps) => {
   const [step, setStep] = useState<"cart" | "form">("cart");
+  const [items, setItems] = useState(initialItems);
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: "",
+    email: "",
+    phone: "",
     address: "",
     number: "",
+    complement: "",
+    observations: "",
   });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   const total = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-  const handleCustomerDataSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const message =
-      `Olá! Gostaria de fazer um pedido:%0A%0A` +
-      `Nome: ${customerData.name}%0A` +
-      `Endereço: ${customerData.address}, ${customerData.number}%0A%0A` +
-      `Pedido:%0A` +
-      items
-        .map(
-          (item) =>
-            `${item.name} - ${item.quantity}x - R$ ${(
-              item.price * item.quantity
-            ).toFixed(2)}`
-        )
-        .join("%0A") +
-      `%0A%0ATotal: R$ ${total.toFixed(2)}`;
+    setLoading(true);
 
-    window.open(`https://wa.me/554198038007?text=${message}`, "_blank");
-    onClose();
+    try {
+      const orderData = {
+        customer_name: customerData.name,
+        customer_email: customerData.email,
+        customer_phone: customerData.phone,
+        customer_address: `${customerData.address}, ${customerData.number}`,
+        complement: customerData.complement,
+        observations: customerData.observations,
+        items: items.map((item) => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          has_chocolate: item.has_chocolate,
+        })),
+      };
+
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || "Erro ao criar pedido");
+      }
+
+      // Limpa o carrinho após sucesso
+      handleCartClear();
+      
+      // Fecha o modal
+      onClose();
+
+      // Abre o WhatsApp
+      const message =
+        `Olá! Gostaria de fazer um pedido:%0A%0A` +
+        `Nome: ${customerData.name}%0A` +
+        `Email: ${customerData.email}%0A` +
+        `Telefone: ${customerData.phone}%0A` +
+        `Endereço: ${customerData.address}, ${customerData.number}${customerData.complement ? ` - ${customerData.complement}` : ''}%0A` +
+        (customerData.observations ? `Observações: ${customerData.observations}%0A` : '') +
+        `%0APedido:%0A` +
+        items
+          .map(
+            (item) =>
+              `${item.name}${item.has_chocolate_option ? ` (${item.has_chocolate ? 'Com chocolate' : 'Sem chocolate'})` : ''} - ${item.quantity}x - R$ ${(
+                item.price * item.quantity
+              ).toFixed(2)}`
+          )
+          .join("%0A") +
+        `%0A%0ATotal: R$ ${total.toFixed(2)}`;
+
+      window.open(
+        `https://wa.me/5511999999999?text=${message}`,
+        "_blank"
+      );
+    } catch (error) {
+      console.error("Erro ao criar pedido:", error);
+      toast.error("Erro ao criar pedido. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProceedToForm = () => {
@@ -71,6 +130,45 @@ const CartModal = ({
 
   const handleBackToCart = () => {
     setStep("cart");
+  };
+
+  const handleChocolateChange = (itemId: string, hasChocolate: boolean) => {
+    // Atualiza o estado local
+    const updatedItems = items.map(item =>
+      item.id === itemId
+        ? { ...item, has_chocolate: hasChocolate }
+        : item
+    );
+    setItems(updatedItems);
+
+    // Atualiza o carrinho global
+    const item = items.find(item => item.id === itemId);
+    if (item) {
+      updateCartItemQuantity(itemId, item.quantity, hasChocolate);
+    }
+
+    // Notifica o usuário
+    toast.success(`${hasChocolate ? 'Com' : 'Sem'} chocolate`);
+  };
+
+  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    const updatedItems = items.map(item =>
+      item.id === itemId
+        ? { ...item, quantity: newQuantity }
+        : item
+    );
+    setItems(updatedItems);
+    onUpdateQuantity(itemId, newQuantity);
+  };
+
+  const handleItemRemove = (itemId: string) => {
+    setItems(items.filter(item => item.id !== itemId));
+    onRemoveItem(itemId);
+  };
+
+  const handleCartClear = () => {
+    clearCart();
+    onClearCart();
   };
 
   return (
@@ -98,9 +196,9 @@ const CartModal = ({
                 </h2>
                 <button
                   onClick={onClose}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-light"
                 >
-                  ✕
+                  ×
                 </button>
               </div>
 
@@ -133,10 +231,36 @@ const CartModal = ({
                               <p className="text-gray-600">
                                 R$ {item.price.toFixed(2)}
                               </p>
+                              {item.has_chocolate_option && (
+                                <div className="mt-2 flex items-center space-x-4">
+                                  <button
+                                    onClick={() => handleChocolateChange(item.id, true)}
+                                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-colors ${
+                                      item.has_chocolate
+                                        ? 'bg-pink-100 text-pink-600'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-pink-50'
+                                    }`}
+                                  >
+                                    <span>🍫</span>
+                                    <span className="text-sm">Com chocolate</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleChocolateChange(item.id, false)}
+                                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-colors ${
+                                      !item.has_chocolate
+                                        ? 'bg-pink-100 text-pink-600'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-pink-50'
+                                    }`}
+                                  >
+                                    <span>🍪</span>
+                                    <span className="text-sm">Sem chocolate</span>
+                                  </button>
+                                </div>
+                              )}
                               <div className="flex items-center space-x-2 mt-2">
                                 <button
                                   onClick={() =>
-                                    onUpdateQuantity(
+                                    handleQuantityChange(
                                       item.id,
                                       Math.max(0, item.quantity - 1)
                                     )
@@ -150,14 +274,14 @@ const CartModal = ({
                                 </span>
                                 <button
                                   onClick={() =>
-                                    onUpdateQuantity(item.id, item.quantity + 1)
+                                    handleQuantityChange(item.id, item.quantity + 1)
                                   }
                                   className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
                                 >
                                   +
                                 </button>
                                 <button
-                                  onClick={() => onRemoveItem(item.id)}
+                                  onClick={() => handleItemRemove(item.id)}
                                   className="ml-2 text-red-500 hover:text-red-700"
                                 >
                                   Remover
@@ -175,6 +299,13 @@ const CartModal = ({
                             R$ {total.toFixed(2)}
                           </span>
                         </div>
+                        
+                        <div className="mb-4 p-4 bg-pink-50 rounded-lg border border-pink-100">
+                          <p className="text-pink-700 text-sm">
+                            ℹ️ O valor do frete e a forma de pagamento serão combinados via WhatsApp após a confirmação do pedido.
+                          </p>
+                        </div>
+
                         <div className="flex flex-col gap-3">
                           <button
                             onClick={handleProceedToForm}
@@ -194,7 +325,7 @@ const CartModal = ({
                   )}
                 </>
               ) : (
-                <form onSubmit={handleCustomerDataSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
                     <label
                       htmlFor="name"
@@ -217,6 +348,53 @@ const CartModal = ({
                       placeholder="Seu nome completo"
                     />
                   </div>
+
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      required
+                      value={customerData.email}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          email: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="phone"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      required
+                      value={customerData.phone}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          phone: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                      placeholder="(41) 99999-9999"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-3 gap-4">
                     <div className="col-span-2">
                       <label
@@ -263,6 +441,51 @@ const CartModal = ({
                       />
                     </div>
                   </div>
+
+                  <div>
+                    <label
+                      htmlFor="complement"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Complemento
+                    </label>
+                    <input
+                      type="text"
+                      id="complement"
+                      value={customerData.complement}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          complement: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                      placeholder="Apto 123, Bloco B, etc."
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="observations"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Observações
+                    </label>
+                    <textarea
+                      id="observations"
+                      value={customerData.observations}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          observations: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                      placeholder="Alguma observação especial para seu pedido?"
+                      rows={3}
+                    />
+                  </div>
+
                   <div className="flex space-x-4">
                     <button
                       type="button"
@@ -273,9 +496,10 @@ const CartModal = ({
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 bg-green-500 text-white py-3 rounded-full hover:bg-green-600 transition-colors duration-300 flex items-center justify-center space-x-2"
+                      disabled={loading}
+                      className="flex-1 bg-green-500 text-white py-3 rounded-full hover:bg-green-600 transition-colors duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span>Enviar Pedido</span>
+                      <span>{loading ? 'Enviando...' : 'Enviar Pedido'}</span>
                       <span>💬</span>
                     </button>
                   </div>
