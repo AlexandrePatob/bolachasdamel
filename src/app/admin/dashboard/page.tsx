@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Order, OrderStatus } from "@/types/database";
-import OrderDetailsModal from "@/components/OrderDetailsModal";
-import CreateOrderModal from "@/components/CreateOrderModal";
+import OrderDetailsModal from "@/components/admin/OrderDetailsModal";
+import CreateOrderModal from "@/components/admin/CreateOrderModal";
 import EditShippingFeeModal from "@/components/EditShippingFeeModal";
 import { formatDate } from "@/lib/utils";
 

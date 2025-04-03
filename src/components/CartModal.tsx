@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
-import { CartItem, clearCart, getCartItems, removeFromCart, updateCartItemQuantity } from "@/lib/cart";
+import { CartItem, clearCart, updateCartItemQuantity } from "@/lib/cart";
 
 interface CartModalProps {
   isOpen: boolean;
@@ -86,10 +86,28 @@ const CartModal = ({
       if (!response.ok) {
         throw new Error(responseData.error || "Erro ao criar pedido");
       }
+      toast.success("Pedido criado com sucesso!", {
+        duration: 5000,
+        position: "top-center",
+      });
 
       // Limpa o carrinho após sucesso
       handleCartClear();
-      
+
+      // Limpa os dados do cliente
+      setCustomerData({
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        number: "",
+        complement: "",
+        observations: "",
+      });
+
+      // Volta para o step do carrinho
+      setStep("cart");
+
       // Fecha o modal
       onClose();
 
@@ -99,23 +117,37 @@ const CartModal = ({
         `Nome: ${customerData.name}%0A` +
         `Email: ${customerData.email}%0A` +
         `Telefone: ${customerData.phone}%0A` +
-        `Endereço: ${customerData.address}, ${customerData.number}${customerData.complement ? ` - ${customerData.complement}` : ''}%0A` +
-        (customerData.observations ? `Observações: ${customerData.observations}%0A` : '') +
+        `Endereço: ${customerData.address}, ${customerData.number}${
+          customerData.complement ? ` - ${customerData.complement}` : ""
+        }%0A` +
+        (customerData.observations
+          ? `Observações: ${customerData.observations}%0A`
+          : "") +
         `%0APedido:%0A` +
         items
           .map(
             (item) =>
-              `${item.name}${item.has_chocolate_option ? ` (${item.has_chocolate ? 'Com chocolate' : 'Sem chocolate'})` : ''} - ${item.quantity}x - R$ ${(
-                item.price * item.quantity
-              ).toFixed(2)}`
+              `${item.name}${
+                item.has_chocolate_option
+                  ? ` (${
+                      item.has_chocolate ? "Com chocolate" : "Sem chocolate"
+                    })`
+                  : ""
+              } - ${item.quantity}x - R$ ${(item.price * item.quantity).toFixed(
+                2
+              )}`
           )
           .join("%0A") +
         `%0A%0ATotal: R$ ${total.toFixed(2)}`;
 
-      window.open(
-        `https://wa.me/554198038007?text=${message}`,
-        "_blank"
-      );
+      // Cria um link temporário e clica nele programaticamente
+      const link = document.createElement("a");
+      link.href = `https://wa.me/554198038007?text=${message}`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error("Erro ao criar pedido:", error);
       toast.error("Erro ao criar pedido. Tente novamente.");
@@ -134,35 +166,31 @@ const CartModal = ({
 
   const handleChocolateChange = (itemId: string, hasChocolate: boolean) => {
     // Atualiza o estado local
-    const updatedItems = items.map(item =>
-      item.id === itemId
-        ? { ...item, has_chocolate: hasChocolate }
-        : item
+    const updatedItems = items.map((item) =>
+      item.id === itemId ? { ...item, has_chocolate: hasChocolate } : item
     );
     setItems(updatedItems);
 
     // Atualiza o carrinho global
-    const item = items.find(item => item.id === itemId);
+    const item = items.find((item) => item.id === itemId);
     if (item) {
       updateCartItemQuantity(itemId, item.quantity, hasChocolate);
     }
 
     // Notifica o usuário
-    toast.success(`${hasChocolate ? 'Com' : 'Sem'} chocolate`);
+    toast.success(`${hasChocolate ? "Com" : "Sem"} chocolate`);
   };
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
-    const updatedItems = items.map(item =>
-      item.id === itemId
-        ? { ...item, quantity: newQuantity }
-        : item
+    const updatedItems = items.map((item) =>
+      item.id === itemId ? { ...item, quantity: newQuantity } : item
     );
     setItems(updatedItems);
     onUpdateQuantity(itemId, newQuantity);
   };
 
   const handleItemRemove = (itemId: string) => {
-    setItems(items.filter(item => item.id !== itemId));
+    setItems(items.filter((item) => item.id !== itemId));
     onRemoveItem(itemId);
   };
 
@@ -234,26 +262,34 @@ const CartModal = ({
                               {item.has_chocolate_option && (
                                 <div className="mt-2 flex items-center space-x-4">
                                   <button
-                                    onClick={() => handleChocolateChange(item.id, true)}
+                                    onClick={() =>
+                                      handleChocolateChange(item.id, true)
+                                    }
                                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-colors ${
                                       item.has_chocolate
-                                        ? 'bg-pink-100 text-pink-600'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-pink-50'
+                                        ? "bg-pink-100 text-pink-600"
+                                        : "bg-gray-100 text-gray-600 hover:bg-pink-50"
                                     }`}
                                   >
                                     <span>🍫</span>
-                                    <span className="text-sm">Com chocolate</span>
+                                    <span className="text-sm">
+                                      Com chocolate
+                                    </span>
                                   </button>
                                   <button
-                                    onClick={() => handleChocolateChange(item.id, false)}
+                                    onClick={() =>
+                                      handleChocolateChange(item.id, false)
+                                    }
                                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-full transition-colors ${
                                       !item.has_chocolate
-                                        ? 'bg-pink-100 text-pink-600'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-pink-50'
+                                        ? "bg-pink-100 text-pink-600"
+                                        : "bg-gray-100 text-gray-600 hover:bg-pink-50"
                                     }`}
                                   >
                                     <span>🍪</span>
-                                    <span className="text-sm">Sem chocolate</span>
+                                    <span className="text-sm">
+                                      Sem chocolate
+                                    </span>
                                   </button>
                                 </div>
                               )}
@@ -274,7 +310,10 @@ const CartModal = ({
                                 </span>
                                 <button
                                   onClick={() =>
-                                    handleQuantityChange(item.id, item.quantity + 1)
+                                    handleQuantityChange(
+                                      item.id,
+                                      item.quantity + 1
+                                    )
                                   }
                                   className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
                                 >
@@ -299,10 +338,12 @@ const CartModal = ({
                             R$ {total.toFixed(2)}
                           </span>
                         </div>
-                        
+
                         <div className="mb-4 p-4 bg-pink-50 rounded-lg border border-pink-100">
                           <p className="text-pink-700 text-sm">
-                            ℹ️ O valor do frete e a forma de pagamento serão combinados via WhatsApp após a confirmação do pedido.
+                            ℹ️ O valor do frete e a forma de pagamento serão
+                            combinados via WhatsApp após a confirmação do
+                            pedido.
                           </p>
                         </div>
 
@@ -497,10 +538,38 @@ const CartModal = ({
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 bg-green-500 text-white py-3 rounded-full hover:bg-green-600 transition-colors duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-green-500 text-white py-3 rounded-full hover:bg-green-600 transition-colors duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-500"
                     >
-                      <span>{loading ? 'Enviando...' : 'Enviar Pedido'}</span>
-                      <span>💬</span>
+                      {loading ? (
+                        <motion.div
+                          className="flex items-center space-x-2"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <motion.div
+                            className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                            animate={{ rotate: 360 }}
+                            transition={{
+                              duration: 1,
+                              repeat: Infinity,
+                              ease: "linear",
+                            }}
+                          />
+                          <motion.span
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            Enviando...
+                          </motion.span>
+                        </motion.div>
+                      ) : (
+                        <>
+                          <span>Enviar Pedido</span>
+                          <span>💬</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
