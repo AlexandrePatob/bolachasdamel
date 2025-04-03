@@ -113,7 +113,7 @@ const CartModal = ({
         `%0A%0ATotal: R$ ${total.toFixed(2)}`;
 
       window.open(
-        `https://wa.me/5511999999999?text=${message}`,
+        `https://wa.me/554198038007?text=${message}`,
         "_blank"
       );
     } catch (error) {
