@@ -22,6 +22,7 @@ interface CustomerData {
   number: string;
   complement: string;
   observations: string;
+  delivery_date: string;
 }
 
 const CartModal = ({
@@ -42,6 +43,7 @@ const CartModal = ({
     number: "",
     complement: "",
     observations: "",
+    delivery_date: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -66,6 +68,7 @@ const CartModal = ({
         customer_address: `${customerData.address}, ${customerData.number}`,
         complement: customerData.complement,
         observations: customerData.observations,
+        delivery_date: customerData.delivery_date,
         items: items.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
@@ -103,6 +106,7 @@ const CartModal = ({
         number: "",
         complement: "",
         observations: "",
+        delivery_date: "",
       });
 
       // Volta para o step do carrinho
@@ -120,6 +124,7 @@ const CartModal = ({
         `Endereço: ${customerData.address}, ${customerData.number}${
           customerData.complement ? ` - ${customerData.complement}` : ""
         }%0A` +
+        `Data de Entrega: ${new Date(customerData.delivery_date).toLocaleDateString('pt-BR')}%0A` +
         (customerData.observations
           ? `Observações: ${customerData.observations}%0A`
           : "") +
@@ -534,6 +539,45 @@ const CartModal = ({
                       placeholder="Alguma observação especial para seu pedido?"
                       rows={3}
                     />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="delivery_date"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Data de Entrega
+                    </label>
+                    <input
+                      type="date"
+                      id="delivery_date"
+                      required
+                      min={(() => {
+                        const today = new Date();
+                        let daysToAdd = 2;
+                        let minDate = new Date(today);
+                        
+                        while (daysToAdd > 0) {
+                          minDate.setDate(minDate.getDate() + 1);
+                          if (minDate.getDay() !== 0 && minDate.getDay() !== 6) {
+                            daysToAdd--;
+                          }
+                        }
+                        
+                        return minDate.toISOString().split('T')[0];
+                      })()}
+                      value={customerData.delivery_date}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          delivery_date: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      Prazo mínimo de 2 dias úteis para produção
+                    </p>
                   </div>
 
                   <div className="flex space-x-4">

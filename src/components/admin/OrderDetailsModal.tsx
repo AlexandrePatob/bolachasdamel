@@ -139,6 +139,10 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onOrderUpdat
                         <span className="text-[#6b4c3b]">{formatDate(order.created_at)}</span>
                       </div>
                       <div className="flex justify-between">
+                        <span className="text-[#6b4c3b]">Data de Entrega</span>
+                        <span className="text-[#6b4c3b]">{order.delivery_date ? formatDate(order.delivery_date) : 'Não definida'}</span>
+                      </div>
+                      <div className="flex justify-between">
                         <span className="text-[#6b4c3b]">Frete</span>
                         <span className="text-[#6b4c3b]">R$ {order.shipping_fee?.toFixed(2) || "0.00"}</span>
                       </div>
