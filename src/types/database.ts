@@ -54,6 +54,7 @@ export interface Order {
     total_amount: number;
     shipping_fee: number;
     status: "pending" | "preparing" | "completed" | "shipped" | "delivered";
+    delivery_date: string | null;
     created_at: string;
     updated_at: string;
     customer: {
@@ -93,6 +94,7 @@ export interface CreateOrderData {
     customer_address: string;
     complement?: string;
     observations?: string;
+    delivery_date: string;
     items: {
         product_id: string;
         quantity: number;

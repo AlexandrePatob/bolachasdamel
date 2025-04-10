@@ -89,6 +89,7 @@ export async function createOrderWithCustomer(orderData: {
     has_chocolate: boolean;
   }[];
   observations?: string;
+  delivery_date: string;
 }) {
   // Validar dados do pedido
   if (
@@ -97,7 +98,8 @@ export async function createOrderWithCustomer(orderData: {
     !orderData.customer_phone ||
     !orderData.customer_address ||
     !orderData.items ||
-    orderData.items.length === 0
+    orderData.items.length === 0 ||
+    !orderData.delivery_date
   ) {
     throw new Error("Dados do pedido incompletos");
   }
@@ -172,6 +174,7 @@ export async function createOrderWithCustomer(orderData: {
       total_amount,
       delivery_address: orderData.customer_address,
       observations: orderData.observations || null,
+      delivery_date: orderData.delivery_date,
       status: "pending",
     })
     .select()
@@ -353,4 +356,13 @@ export async function verifyAdminCredentials(email: string, password: string) {
 
   if (error) throw error;
   return data;
+}
+
+export async function deleteOrder(id: string) {
+  const { error } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
 }

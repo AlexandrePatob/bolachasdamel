@@ -28,6 +28,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     number: '',
     complement: '',
     observations: '',
+    delivery_date: '',
   });
   const [items, setItems] = useState<OrderItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState('');
@@ -100,6 +101,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
           customer_address: customer.address,
           complement: customer.complement,
           observations: customer.observations,
+          delivery_date: customer.delivery_date,
           items,
         }),
       });
@@ -242,6 +244,35 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                         rows={3}
                         className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
+                        Data de Entrega
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        min={(() => {
+                          const today = new Date();
+                          let daysToAdd = 2;
+                          let minDate = new Date(today);
+                          
+                          while (daysToAdd > 0) {
+                            minDate.setDate(minDate.getDate() + 1);
+                            if (minDate.getDay() !== 0 && minDate.getDay() !== 6) {
+                              daysToAdd--;
+                            }
+                          }
+                          
+                          return minDate.toISOString().split('T')[0];
+                        })()}
+                        value={customer.delivery_date}
+                        onChange={(e) => setCustomer({ ...customer, delivery_date: e.target.value })}
+                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">
+                        Prazo mínimo de 2 dias úteis para produção
+                      </p>
                     </div>
                   </div>
                 </div>

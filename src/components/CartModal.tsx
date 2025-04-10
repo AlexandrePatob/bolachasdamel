@@ -22,6 +22,7 @@ interface CustomerData {
   number: string;
   complement: string;
   observations: string;
+  delivery_date: string;
 }
 
 const CartModal = ({
@@ -42,6 +43,7 @@ const CartModal = ({
     number: "",
     complement: "",
     observations: "",
+    delivery_date: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -66,6 +68,7 @@ const CartModal = ({
         customer_address: `${customerData.address}, ${customerData.number}`,
         complement: customerData.complement,
         observations: customerData.observations,
+        delivery_date: customerData.delivery_date,
         items: items.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
@@ -103,6 +106,7 @@ const CartModal = ({
         number: "",
         complement: "",
         observations: "",
+        delivery_date: "",
       });
 
       // Volta para o step do carrinho
@@ -120,6 +124,7 @@ const CartModal = ({
         `Endereço: ${customerData.address}, ${customerData.number}${
           customerData.complement ? ` - ${customerData.complement}` : ""
         }%0A` +
+        `Data de Entrega: ${new Date(customerData.delivery_date).toLocaleDateString('pt-BR')}%0A` +
         (customerData.observations
           ? `Observações: ${customerData.observations}%0A`
           : "") +
@@ -338,11 +343,20 @@ const CartModal = ({
                         </div>
 
                         <div className="mb-4 p-4 bg-pink-50 rounded-lg border border-pink-100">
-                          <p className="text-pink-700 text-sm">
-                            ℹ️ O valor do frete e a forma de pagamento serão
-                            combinados via WhatsApp após a confirmação do
-                            pedido.
+                          <h3 className="text-lg font-semibold text-pink-600 mb-2">Entrega e Pagamento</h3>
+                          <p className="text-pink-700 text-sm mb-3">
+                            O valor do frete e a forma de pagamento serão combinados via WhatsApp após a confirmação do pedido.
                           </p>
+                          <div className="space-y-2">
+                            <div className="p-3 bg-white rounded-lg border border-pink-100 flex items-center">
+                              <span className="text-pink-600 mr-2">📍</span>
+                              <span className="text-gray-700">Retirada em Santa Felicidade</span>
+                            </div>
+                            <div className="p-3 bg-white rounded-lg border border-pink-100 flex items-center">
+                              <span className="text-pink-600 mr-2">🚗</span>
+                              <span className="text-gray-700">Combinar via WhatsApp (Uber entrega)</span>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="flex flex-col gap-3">
@@ -523,6 +537,45 @@ const CartModal = ({
                       placeholder="Alguma observação especial para seu pedido?"
                       rows={3}
                     />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="delivery_date"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Data de Entrega
+                    </label>
+                    <input
+                      type="date"
+                      id="delivery_date"
+                      required
+                      min={(() => {
+                        const today = new Date();
+                        let daysToAdd = 2;
+                        let minDate = new Date(today);
+                        
+                        while (daysToAdd > 0) {
+                          minDate.setDate(minDate.getDate() + 1);
+                          if (minDate.getDay() !== 0 && minDate.getDay() !== 6) {
+                            daysToAdd--;
+                          }
+                        }
+                        
+                        return minDate.toISOString().split('T')[0];
+                      })()}
+                      value={customerData.delivery_date}
+                      onChange={(e) =>
+                        setCustomerData({
+                          ...customerData,
+                          delivery_date: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      Prazo mínimo de 2 dias úteis para produção
+                    </p>
                   </div>
 
                   <div className="flex space-x-4">

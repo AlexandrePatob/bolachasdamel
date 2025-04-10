@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const [orderToEditShippingFee, setOrderToEditShippingFee] =
     useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [isStatsExpanded, setIsStatsExpanded] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -63,10 +64,10 @@ export default function AdminDashboard() {
         cache: "no-store",
         next: { revalidate: 0 },
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
       });
       if (!response.ok) {
         throw new Error("Erro ao carregar dados");
@@ -140,6 +141,10 @@ export default function AdminDashboard() {
     setOrders((prevOrders) =>
       prevOrders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
     );
+  };
+
+  const handleOrderDeleted = () => {
+    fetchDashboardData();
   };
 
   if (loading) {
@@ -234,123 +239,704 @@ export default function AdminDashboard() {
       </div>
 
       {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Card principal com métricas gerais */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl shadow-sm p-4 border border-pink-100 lg:col-span-2"
-        >
-          <h3 className="text-sm font-medium text-[#6b4c3b]">Visão Geral</h3>
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <div>
-              <p className="text-sm text-gray-500">Total de Pedidos</p>
-              <p className="text-xl font-bold text-[#6b4c3b]">
-                {stats?.total_orders || 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Receita Total</p>
-              <p className="text-xl font-bold text-[#6b4c3b]">
-                R$ {stats?.total_revenue.toFixed(2) || "0.00"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Pedidos Pendentes</p>
-              <p className="text-xl font-bold text-[#6b4c3b]">
-                {orders.filter((order) => order.status === "pending").length}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Receita Total + Frete</p>
-              <p className="text-xl font-bold text-[#6b4c3b]">
-                R${" "}
-                {orders
-                  .reduce(
-                    (sum, order) =>
-                      sum + order.total_amount + (order.shipping_fee || 0),
-                    0
-                  )
-                  .toFixed(2)}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Card de status com dropdown */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
-        >
-          <h3 className="text-sm font-medium text-[#6b4c3b]">
-            Status dos Pedidos
-          </h3>
-          <div className="relative mt-4">
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as OrderStatus | "all")
-              }
-              className="appearance-none w-full bg-white border border-pink-200 rounded-lg px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[#6b4c3b] focus:border-[#6b4c3b] cursor-pointer"
+      <div className="space-y-4">
+        {/* Accordion para Mobile */}
+        <div className="md:hidden">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+          >
+            <button
+              onClick={() => setIsStatsExpanded(!isStatsExpanded)}
+              className="w-full flex items-center justify-between"
             >
-              <option value="all" className="py-2">
-                Todos os Status
-              </option>
-              <option
-                value="pending"
-                className="py-2 bg-yellow-50 text-yellow-800"
-              >
-                Pendentes ({stats?.orders_by_status.pending || 0})
-              </option>
-              <option
-                value="preparing"
-                className="py-2 bg-blue-50 text-blue-800"
-              >
-                Em Preparo ({stats?.orders_by_status.preparing || 0})
-              </option>
-              <option
-                value="completed"
-                className="py-2 bg-green-50 text-green-800"
-              >
-                Concluídos ({stats?.orders_by_status.completed || 0})
-              </option>
-              <option
-                value="shipped"
-                className="py-2 bg-purple-50 text-purple-800"
-              >
-                Enviados ({stats?.orders_by_status.shipped || 0})
-              </option>
-              <option
-                value="delivered"
-                className="py-2 bg-emerald-50 text-emerald-800"
-              >
-                Entregues ({stats?.orders_by_status.delivered || 0})
-              </option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-pink-400">
+              <div className="flex items-center space-x-3">
+                <div className="bg-pink-50 p-2 rounded-lg">
+                  <svg
+                    className="h-5 w-5 text-[#6b4c3b]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-[#6b4c3b]">
+                  Estatísticas
+                </span>
+              </div>
               <svg
-                className="fill-current h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
+                className={`h-5 w-5 text-[#6b4c3b] transform transition-transform duration-200 ${
+                  isStatsExpanded ? "rotate-180" : ""
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
+            </button>
+          </motion.div>
+
+          {/* Cards expandidos */}
+          {isStatsExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4 mt-4"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                {/* Card de Total de Pedidos */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Total</p>
+                      <p className="text-xl font-bold text-[#6b4c3b]">
+                        {stats?.total_orders || 0}
+                      </p>
+                    </div>
+                    <div className="bg-pink-50 p-2 rounded-lg">
+                      <svg
+                        className="h-5 w-5 text-[#6b4c3b]"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Card de Pedidos Pendentes */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-white rounded-xl shadow-sm p-4 border border-yellow-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Pendentes</p>
+                      <p className="text-xl font-bold text-yellow-600">
+                        {stats?.orders_by_status.pending || 0}
+                      </p>
+                    </div>
+                    <div className="bg-yellow-50 p-2 rounded-lg">
+                      <svg
+                        className="h-5 w-5 text-yellow-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Card de Pedidos em Preparo */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="bg-white rounded-xl shadow-sm p-4 border border-blue-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Em Preparo</p>
+                      <p className="text-xl font-bold text-blue-600">
+                        {stats?.orders_by_status.preparing || 0}
+                      </p>
+                    </div>
+                    <div className="bg-blue-50 p-2 rounded-lg">
+                      <svg
+                        className="h-5 w-5 text-blue-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Card de Pedidos Concluídos */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="bg-white rounded-xl shadow-sm p-4 border border-green-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Concluídos</p>
+                      <p className="text-xl font-bold text-green-600">
+                        {stats?.orders_by_status.completed || 0}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-2 rounded-lg">
+                      <svg
+                        className="h-5 w-5 text-green-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Card de Pedidos Entregues */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="bg-white rounded-xl shadow-sm p-4 border border-emerald-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Entregues</p>
+                      <p className="text-xl font-bold text-emerald-600">
+                        {stats?.orders_by_status.delivered || 0}
+                      </p>
+                    </div>
+                    <div className="bg-emerald-50 p-2 rounded-lg">
+                      <svg
+                        className="h-5 w-5 text-emerald-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Card de Receita Total */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                  className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">Receita Total</p>
+                      <p className="text-xl font-bold text-[#6b4c3b]">
+                        R$ {stats?.total_revenue.toFixed(2) || "0.00"}
+                      </p>
+                    </div>
+                    <div className="bg-pink-50 p-2 rounded-lg">
+                      <svg
+                        className="h-5 w-5 text-[#6b4c3b]"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Card de Frete Total */}
+                {orders.some(
+                  (order) => order.shipping_fee && order.shipping_fee > 0
+                ) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="bg-white rounded-xl shadow-sm p-4 border border-purple-100"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-500">Frete Total</p>
+                        <p className="text-xl font-bold text-purple-600">
+                          R${" "}
+                          {orders
+                            .reduce(
+                              (sum, order) => sum + (order.shipping_fee || 0),
+                              0
+                            )
+                            .toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-purple-50 p-2 rounded-lg">
+                        <svg
+                          className="h-5 w-5 text-purple-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Card de Receita + Frete */}
+                {orders.some(
+                  (order) => order.shipping_fee && order.shipping_fee > 0
+                ) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.9 }}
+                    className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-500">Receita + Frete</p>
+                        <p className="text-xl font-bold text-[#6b4c3b]">
+                          R${" "}
+                          {orders
+                            .reduce(
+                              (sum, order) =>
+                                sum +
+                                order.total_amount +
+                                (order.shipping_fee || 0),
+                              0
+                            )
+                            .toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-pink-50 p-2 rounded-lg">
+                        <svg
+                          className="h-5 w-5 text-[#6b4c3b]"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Cards para Desktop */}
+        <div className="hidden md:grid md:grid-cols-5 gap-4">
+          {/* Card de Total de Pedidos */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total de Pedidos</p>
+                <p className="text-2xl font-bold text-[#6b4c3b]">
+                  {stats?.total_orders || 0}
+                </p>
+              </div>
+              <div className="bg-pink-50 p-3 rounded-lg">
+                <svg
+                  className="h-6 w-6 text-[#6b4c3b]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+
+          {/* Card de Pedidos Pendentes */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-xl shadow-sm p-4 border border-yellow-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Pendentes</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {stats?.orders_by_status.pending || 0}
+                </p>
+              </div>
+              <div className="bg-yellow-50 p-3 rounded-lg">
+                <svg
+                  className="h-6 w-6 text-yellow-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Card de Pedidos em Preparo */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-xl shadow-sm p-4 border border-blue-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Em Preparo</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {stats?.orders_by_status.preparing || 0}
+                </p>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <svg
+                  className="h-6 w-6 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Card de Pedidos Concluídos */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white rounded-xl shadow-sm p-4 border border-green-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Concluídos</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats?.orders_by_status.completed || 0}
+                </p>
+              </div>
+              <div className="bg-green-50 p-3 rounded-lg">
+                <svg
+                  className="h-6 w-6 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Card de Pedidos Entregues */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-white rounded-xl shadow-sm p-4 border border-emerald-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Entregues</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {stats?.orders_by_status.delivered || 0}
+                </p>
+              </div>
+              <div className="bg-emerald-50 p-3 rounded-lg">
+                <svg
+                  className="h-6 w-6 text-emerald-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Cards de Receita para Desktop */}
+        <div className="hidden md:grid md:grid-cols-3 gap-4">
+          {/* Card de Receita Total */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Receita Total</p>
+                <p className="text-2xl font-bold text-[#6b4c3b]">
+                  R$ {stats?.total_revenue.toFixed(2) || "0.00"}
+                </p>
+              </div>
+              <div className="bg-pink-50 p-3 rounded-lg">
+                <svg
+                  className="h-6 w-6 text-[#6b4c3b]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Card de Frete Total */}
+          {orders.some(
+            (order) => order.shipping_fee && order.shipping_fee > 0
+          ) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="bg-white rounded-xl shadow-sm p-4 border border-purple-100"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Frete Total</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    R${" "}
+                    {orders
+                      .reduce(
+                        (sum, order) => sum + (order.shipping_fee || 0),
+                        0
+                      )
+                      .toFixed(2)}
+                  </p>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <svg
+                    className="h-6 w-6 text-purple-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Card de Receita + Frete */}
+          {orders.some(
+            (order) => order.shipping_fee && order.shipping_fee > 0
+          ) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Receita + Frete</p>
+                  <p className="text-2xl font-bold text-[#6b4c3b]">
+                    R${" "}
+                    {orders
+                      .reduce(
+                        (sum, order) =>
+                          sum + order.total_amount + (order.shipping_fee || 0),
+                        0
+                      )
+                      .toFixed(2)}
+                  </p>
+                </div>
+                <div className="bg-pink-50 p-3 rounded-lg">
+                  <svg
+                    className="h-6 w-6 text-[#6b4c3b]"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
+
+      {/* Filtro de Status */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+        className="bg-white rounded-xl shadow-sm p-4 border border-pink-100"
+      >
+        <h3 className="text-sm font-medium text-[#6b4c3b] mb-4">
+          Status dos Pedidos
+        </h3>
+        <div className="relative">
+          <select
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as OrderStatus | "all")
+            }
+            className="appearance-none w-full bg-white border border-pink-200 rounded-lg px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[#6b4c3b] focus:border-[#6b4c3b] cursor-pointer"
+          >
+            <option value="all" className="py-2">
+              Todos os Status
+            </option>
+            <option
+              value="pending"
+              className="py-2 bg-yellow-50 text-yellow-800"
+            >
+              Pendentes ({stats?.orders_by_status.pending || 0})
+            </option>
+            <option value="preparing" className="py-2 bg-blue-50 text-blue-800">
+              Em Preparo ({stats?.orders_by_status.preparing || 0})
+            </option>
+            <option
+              value="completed"
+              className="py-2 bg-green-50 text-green-800"
+            >
+              Concluídos ({stats?.orders_by_status.completed || 0})
+            </option>
+            <option
+              value="shipped"
+              className="py-2 bg-purple-50 text-purple-800"
+            >
+              Enviados ({stats?.orders_by_status.shipped || 0})
+            </option>
+            <option
+              value="delivered"
+              className="py-2 bg-emerald-50 text-emerald-800"
+            >
+              Entregues ({stats?.orders_by_status.delivered || 0})
+            </option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-pink-400">
+            <svg
+              className="fill-current h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+            >
+              <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+            </svg>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Tabela de Pedidos */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.9 }}
         className="bg-white rounded-xl shadow-sm border border-pink-100 overflow-hidden"
       >
-        <div className="overflow-x-auto">
+        {/* Desktop Table - Hidden on Mobile */}
+        <div className="hidden md:block">
           <table className="min-w-full divide-y divide-pink-100">
             <thead className="bg-pink-50">
               <tr>
@@ -367,7 +953,10 @@ export default function AdminDashboard() {
                   Frete
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data
+                  Data criação
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Data entrega
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
                   Status
@@ -375,149 +964,279 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-pink-100">
-              {filteredOrders &&
-                filteredOrders?.map((order) => (
-                  <tr
-                    key={order.id}
-                    onClick={() => handleOrderClick(order)}
-                    className="cursor-pointer hover:bg-pink-50 transition-colors duration-200"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <div className="text-sm font-medium text-[#6b4c3b]">
-                            {order.customer.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {order.customer.phone}
-                          </div>
-                        </div>
-                        <div className="text-sm text-pink-600">
-                          {order.customer.email}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {order.delivery_address}
-                          {order.customer?.complement && (
-                            <span className="text-gray-500">
-                              {" "}
-                              - {order.customer.complement}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {order.items.map((item) => (
-                        <div key={item.id}>
-                          {item.quantity}x {item.product?.name}
-                        </div>
-                      ))}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-[#6b4c3b]">
-                        R$ {order.total_amount.toFixed(2)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+              {filteredOrders?.map((order) => (
+                <tr
+                  key={order.id}
+                  onClick={() => handleOrderClick(order)}
+                  className="cursor-pointer hover:bg-pink-50 transition-colors duration-200"
+                >
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
                       <div className="flex items-center space-x-2">
-                        <div className="text-sm text-[#6b4c3b]">
-                          R$ {order.shipping_fee?.toFixed(2) || "0.00"}
+                        <div className="text-sm font-medium text-[#6b4c3b]">
+                          {order.customer.name}
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShippingFeeEdit(order);
-                          }}
-                          className="text-pink-600 hover:text-pink-700"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                        </button>
+                        <div className="text-xs text-gray-500">
+                          {order.customer.phone}
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-xs text-gray-500">
-                        {new Date(order.created_at).toLocaleDateString(
-                          "pt-BR",
-                          {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
+                      <div className="text-sm text-pink-600">
+                        {order.customer.email}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {order.delivery_address}
+                        {order.customer?.complement && (
+                          <span className="text-gray-500">
+                            {" "}
+                            - {order.customer.complement}
+                          </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={order.status}
-                        onChange={(e) =>
-                          handleStatusChange(
-                            order.id,
-                            e.target.value as OrderStatus
-                          )
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        className={`text-sm rounded-lg border-2 bg-white px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 transition-colors duration-200 ${
-                          order.status === "pending"
-                            ? "border-yellow-300 focus:border-yellow-500 focus:ring-yellow-200"
-                            : order.status === "preparing"
-                            ? "border-blue-300 focus:border-blue-500 focus:ring-blue-200"
-                            : order.status === "completed"
-                            ? "border-green-300 focus:border-green-500 focus:ring-green-200"
-                            : order.status === "shipped"
-                            ? "border-purple-300 focus:border-purple-500 focus:ring-purple-200"
-                            : "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-200"
-                        }`}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {order.items.map((item) => (
+                      <div key={item.id}>
+                        {item.quantity}x {item.product?.name}
+                      </div>
+                    ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-[#6b4c3b]">
+                      R$ {order.total_amount.toFixed(2)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <div className="text-sm text-[#6b4c3b]">
+                        R$ {order.shipping_fee?.toFixed(2) || "0.00"}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShippingFeeEdit(order);
+                        }}
+                        className="text-pink-600 hover:text-pink-700"
                       >
-                        <option
-                          value="pending"
-                          className="bg-yellow-50 text-yellow-800"
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
                         >
-                          Pendente
-                        </option>
-                        <option
-                          value="preparing"
-                          className="bg-blue-50 text-blue-800"
-                        >
-                          Em Preparo
-                        </option>
-                        <option
-                          value="completed"
-                          className="bg-green-50 text-green-800"
-                        >
-                          Concluído
-                        </option>
-                        <option
-                          value="shipped"
-                          className="bg-purple-50 text-purple-800"
-                        >
-                          Enviado
-                        </option>
-                        <option
-                          value="delivered"
-                          className="bg-emerald-50 text-emerald-800"
-                        >
-                          Entregue
-                        </option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-xs text-gray-500">
+                      {new Date(order.created_at).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-xs text-gray-500">
+                      {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                      }) : "Não definida"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={order.status}
+                      onChange={(e) =>
+                        handleStatusChange(
+                          order.id,
+                          e.target.value as OrderStatus
+                        )
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      className={`text-sm rounded-lg border-2 bg-white px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                        order.status === "pending"
+                          ? "border-yellow-300 focus:border-yellow-500 focus:ring-yellow-200"
+                          : order.status === "preparing"
+                          ? "border-blue-300 focus:border-blue-500 focus:ring-blue-200"
+                          : order.status === "completed"
+                          ? "border-green-300 focus:border-green-500 focus:ring-green-200"
+                          : order.status === "shipped"
+                          ? "border-purple-300 focus:border-purple-500 focus:ring-purple-200"
+                          : "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-200"
+                      }`}
+                    >
+                      <option
+                        value="pending"
+                        className="bg-yellow-50 text-yellow-800"
+                      >
+                        Pendente
+                      </option>
+                      <option
+                        value="preparing"
+                        className="bg-blue-50 text-blue-800"
+                      >
+                        Em Preparo
+                      </option>
+                      <option
+                        value="completed"
+                        className="bg-green-50 text-green-800"
+                      >
+                        Concluído
+                      </option>
+                      <option
+                        value="shipped"
+                        className="bg-purple-50 text-purple-800"
+                      >
+                        Enviado
+                      </option>
+                      <option
+                        value="delivered"
+                        className="bg-emerald-50 text-emerald-800"
+                      >
+                        Entregue
+                      </option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards - Hidden on Desktop */}
+        <div className="md:hidden">
+          {filteredOrders?.map((order) => (
+            <div
+              key={order.id}
+              onClick={() => handleOrderClick(order)}
+              className="p-4 border-b border-pink-100 cursor-pointer hover:bg-pink-50 transition-colors duration-200"
+            >
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium text-[#6b4c3b]">
+                      {order.customer.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {order.customer.phone}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Criação: {new Date(order.created_at).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    <div className="mt-1">
+                      Entrega: {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                      }) : "Não definida"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-sm text-pink-600">
+                  {order.customer.email}
+                </div>
+
+                <div className="text-sm text-gray-600">
+                  {order.delivery_address}
+                  {order.customer?.complement && (
+                    <span className="text-gray-500">
+                      {" "}
+                      - {order.customer.complement}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="text-sm text-gray-500">
+                      {item.quantity}x {item.product?.name}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <div className="text-sm text-[#6b4c3b]">
+                      R$ {order.total_amount.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-[#6b4c3b]">
+                      + R$ {order.shipping_fee?.toFixed(2) || "0.00"} (frete)
+                    </div>
+                  </div>
+                  <select
+                    value={order.status}
+                    onChange={(e) =>
+                      handleStatusChange(
+                        order.id,
+                        e.target.value as OrderStatus
+                      )
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className={`text-sm rounded-lg border-2 bg-white px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 transition-colors duration-200 ${
+                      order.status === "pending"
+                        ? "border-yellow-300 focus:border-yellow-500 focus:ring-yellow-200"
+                        : order.status === "preparing"
+                        ? "border-blue-300 focus:border-blue-500 focus:ring-blue-200"
+                        : order.status === "completed"
+                        ? "border-green-300 focus:border-green-500 focus:ring-green-200"
+                        : order.status === "shipped"
+                        ? "border-purple-300 focus:border-purple-500 focus:ring-purple-200"
+                        : "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-200"
+                    }`}
+                  >
+                    <option
+                      value="pending"
+                      className="bg-yellow-50 text-yellow-800"
+                    >
+                      Pendente
+                    </option>
+                    <option
+                      value="preparing"
+                      className="bg-blue-50 text-blue-800"
+                    >
+                      Em Preparo
+                    </option>
+                    <option
+                      value="completed"
+                      className="bg-green-50 text-green-800"
+                    >
+                      Concluído
+                    </option>
+                    <option
+                      value="shipped"
+                      className="bg-purple-50 text-purple-800"
+                    >
+                      Enviado
+                    </option>
+                    <option
+                      value="delivered"
+                      className="bg-emerald-50 text-emerald-800"
+                    >
+                      Entregue
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </motion.div>
 
@@ -530,6 +1249,7 @@ export default function AdminDashboard() {
           setSelectedOrder(null);
         }}
         onOrderUpdated={handleOrderUpdated}
+        onOrderDeleted={handleOrderDeleted}
       />
 
       {/* Modal de Criação */}
