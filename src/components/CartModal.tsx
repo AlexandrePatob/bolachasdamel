@@ -90,7 +90,7 @@ const CartModal = ({
         duration: 5000,
         position: "top-center",
       });
-
+      
       // Limpa o carrinho após sucesso
       handleCartClear();
 
@@ -110,7 +110,7 @@ const CartModal = ({
 
       // Fecha o modal
       onClose();
-
+      
       // Abre o WhatsApp
       const message =
         `Olá! Gostaria de fazer um pedido:%0A%0A` +
@@ -140,14 +140,12 @@ const CartModal = ({
           .join("%0A") +
         `%0A%0ATotal: R$ ${total.toFixed(2)}`;
 
-      // Cria um link temporário e clica nele programaticamente
-      const link = document.createElement("a");
-      link.href = `https://wa.me/554198038007?text=${message}`;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const url = `https://wa.me/554198038007?text=${message}`;
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+
+      if (!win || win.closed || typeof win.closed === "undefined") {
+        window.location.href = url;
+      }
     } catch (error) {
       console.error("Erro ao criar pedido:", error);
       toast.error("Erro ao criar pedido. Tente novamente.");
