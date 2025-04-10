@@ -953,7 +953,10 @@ export default function AdminDashboard() {
                   Frete
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data
+                  Data criação
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Data entrega
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[#6b4c3b] uppercase tracking-wider">
                   Status
@@ -1043,6 +1046,15 @@ export default function AdminDashboard() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-xs text-gray-500">
+                      {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                      }) : "Não definida"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <select
                       value={order.status}
                       onChange={(e) =>
@@ -1121,13 +1133,20 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="text-xs text-gray-500">
-                    {new Date(order.created_at).toLocaleDateString("pt-BR", {
+                    Criação: {new Date(order.created_at).toLocaleDateString("pt-BR", {
                       day: "2-digit",
                       month: "2-digit",
                       year: "2-digit",
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
+                    <div className="mt-1">
+                      Entrega: {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit",
+                      }) : "Não definida"}
+                    </div>
                   </div>
                 </div>
 
