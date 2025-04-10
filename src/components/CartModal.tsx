@@ -340,11 +340,20 @@ const CartModal = ({
                         </div>
 
                         <div className="mb-4 p-4 bg-pink-50 rounded-lg border border-pink-100">
-                          <p className="text-pink-700 text-sm">
-                            ℹ️ O valor do frete e a forma de pagamento serão
-                            combinados via WhatsApp após a confirmação do
-                            pedido.
+                          <h3 className="text-lg font-semibold text-pink-600 mb-2">Entrega e Pagamento</h3>
+                          <p className="text-pink-700 text-sm mb-3">
+                            O valor do frete e a forma de pagamento serão combinados via WhatsApp após a confirmação do pedido.
                           </p>
+                          <div className="space-y-2">
+                            <div className="p-3 bg-white rounded-lg border border-pink-100 flex items-center">
+                              <span className="text-pink-600 mr-2">📍</span>
+                              <span className="text-gray-700">Retirada em Santa Felicidade</span>
+                            </div>
+                            <div className="p-3 bg-white rounded-lg border border-pink-100 flex items-center">
+                              <span className="text-pink-600 mr-2">🚗</span>
+                              <span className="text-gray-700">Combinar via WhatsApp (Uber entrega)</span>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="flex flex-col gap-3">
