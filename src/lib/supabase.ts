@@ -357,3 +357,12 @@ export async function verifyAdminCredentials(email: string, password: string) {
   if (error) throw error;
   return data;
 }
+
+export async function deleteOrder(id: string) {
+  const { error } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}

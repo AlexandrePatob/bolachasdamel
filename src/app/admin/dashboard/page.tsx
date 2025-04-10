@@ -142,6 +142,10 @@ export default function AdminDashboard() {
     );
   };
 
+  const handleOrderDeleted = () => {
+    fetchDashboardData();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -530,6 +534,7 @@ export default function AdminDashboard() {
           setSelectedOrder(null);
         }}
         onOrderUpdated={handleOrderUpdated}
+        onOrderDeleted={handleOrderDeleted}
       />
 
       {/* Modal de Criação */}

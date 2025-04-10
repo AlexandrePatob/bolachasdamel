@@ -2,16 +2,47 @@ import { Order } from '@/types/database';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface OrderDetailsModalProps {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
   onOrderUpdated?: (updatedOrder: Order) => void;
+  onOrderDeleted?: () => void;
 }
 
-export default function OrderDetailsModal({ order, isOpen, onClose, onOrderUpdated }: OrderDetailsModalProps) {
+export default function OrderDetailsModal({ 
+  order, 
+  isOpen, 
+  onClose, 
+  onOrderUpdated,
+  onOrderDeleted 
+}: OrderDetailsModalProps) {
   if (!order) return null;
+
+  const handleDelete = async () => {
+    if (!confirm('Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/orders/${order.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir pedido');
+      }
+
+      toast.success('Pedido excluído com sucesso!');
+      onOrderDeleted?.();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error('Erro ao excluir pedido');
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -40,14 +71,24 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onOrderUpdat
                   <h2 className="text-xl font-semibold text-[#6b4c3b]">
                     Detalhes do Pedido #{order.id.slice(0, 8)}
                   </h2>
-                  <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={handleDelete}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="text-gray-400 hover:text-gray-500"
+                    >
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
 
