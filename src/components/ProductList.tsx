@@ -5,53 +5,122 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { Product } from "@/types/database";
 import ChocolateOptionModal from "./ChocolateOptionModal";
+import { Star, ArrowRight } from "lucide-react";
 
 interface ProductListProps {
-  onOrderClick: (product: { id: string; product_id: string; name: string; price: number; image: string; has_chocolate_option: boolean; has_chocolate: boolean }) => void;
+  category: string;
+  onOrderClick: (product: {
+    id: string;
+    product_id: string;
+    name: string;
+    price: number;
+    image: string;
+    has_chocolate_option: boolean;
+    has_chocolate: boolean;
+  }) => void;
 }
 
-const ProductList = ({ onOrderClick }: ProductListProps) => {
+const ProductList = ({ category, onOrderClick }: ProductListProps) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showChocolateModal, setShowChocolateModal] = useState(false);
 
+  const getCategoryTitle = (category: string) => {
+    switch (category) {
+      case "maes":
+        return "Presentes para o Dia das Mães";
+      case "fe":
+        return "Produtos de Fé";
+      case "pascoa":
+        return "Produtos de Páscoa";
+      case "outros":
+        return "Outros Produtos";
+      default:
+        return "Produtos";
+    }
+  };
+
+  const getCategoryDescription = (category: string) => {
+    switch (category) {
+      case "maes":
+        return "Presentes especiais para celebrar o amor e carinho das mães";
+      case "fe":
+        return "Produtos que inspiram e fortalecem a fé";
+      case "pascoa":
+        return "Deliciosas opções para celebrar a Páscoa";
+      case "outros":
+        return "Conheça nossa variedade de produtos";
+      default:
+        return "Nossos produtos";
+    }
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await fetch('/api/products', {
-        next: { revalidate: 300 }, // Cache por 5 minutos
+      const response = await fetch(`/api/products?category=${category}`, {
+        next: { revalidate: 300 },
       });
-      
-      if (!response.ok) throw new Error('Failed to fetch products');
+
+      if (!response.ok) throw new Error("Failed to fetch products");
       const data = await response.json();
       setProducts(data);
     } catch (error) {
-      console.error('Error fetching products:', error);
-      toast.error('Erro ao carregar produtos');
+      console.error("Error fetching products:", error);
+      toast.error("Erro ao carregar produtos");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [category]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  const handleAddToCart = useCallback((product: Product) => {
-    if (product.has_chocolate_option) {
-      setSelectedProduct(product);
-      setShowChocolateModal(true);
-    } else {
+  const handleAddToCart = useCallback(
+    (product: Product) => {
+      if (product.has_chocolate_option) {
+        setSelectedProduct(product);
+        setShowChocolateModal(true);
+      } else {
+        onOrderClick({
+          id: product.id,
+          product_id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image || "",
+          has_chocolate_option: product.has_chocolate_option,
+          has_chocolate: false,
+        });
+        toast.success(`${product.name} adicionado ao carrinho!`, {
+          duration: 2000,
+          icon: "🛒",
+          style: {
+            background: "#FDF2F8",
+            color: "#BE185D",
+            border: "1px solid #FBCFE8",
+          },
+        });
+      }
+    },
+    [onOrderClick]
+  );
+
+  const handleChocolateOption = useCallback(
+    (hasChocolate: boolean) => {
+      if (!selectedProduct) return;
+
       onOrderClick({
-        id: product.id,
-        product_id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image || '',
-        has_chocolate_option: product.has_chocolate_option,
-        has_chocolate: false,
+        id: selectedProduct.id,
+        product_id: selectedProduct.id,
+        name: selectedProduct.name,
+        price: selectedProduct.price,
+        image: selectedProduct.image || "",
+        has_chocolate_option: true,
+        has_chocolate: hasChocolate,
       });
-      toast.success(`${product.name} adicionado ao carrinho!`, {
+
+      toast.success(`${selectedProduct.name} adicionado ao carrinho!`, {
         duration: 2000,
         icon: "🛒",
         style: {
@@ -60,126 +129,121 @@ const ProductList = ({ onOrderClick }: ProductListProps) => {
           border: "1px solid #FBCFE8",
         },
       });
-    }
-  }, [onOrderClick]);
 
-  const handleChocolateOption = useCallback((hasChocolate: boolean) => {
-    if (!selectedProduct) return;
-
-    onOrderClick({
-      id: selectedProduct.id,
-      product_id: selectedProduct.id,
-      name: selectedProduct.name,
-      price: selectedProduct.price,
-      image: selectedProduct.image || '',
-      has_chocolate_option: true,
-      has_chocolate: hasChocolate,
-    });
-
-    toast.success(`${selectedProduct.name} adicionado ao carrinho!`, {
-      duration: 2000,
-      icon: "🛒",
-      style: {
-        background: "#FDF2F8",
-        color: "#BE185D",
-        border: "1px solid #FBCFE8",
-      },
-    });
-
-    setShowChocolateModal(false);
-    setSelectedProduct(null);
-  }, [selectedProduct, onOrderClick]);
+      setShowChocolateModal(false);
+      setSelectedProduct(null);
+    },
+    [selectedProduct, onOrderClick]
+  );
 
   if (loading) {
     return (
-      <section className="w-full py-16 bg-gradient-to-b from-pink-50 to-white">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <motion.div
-              animate={{
-                scale: [1, 1.2, 1],
-                rotate: [0, 360],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full"
-            />
-            <motion.p
-              animate={{
-                opacity: [0.5, 1, 0.5],
-              }}
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="text-xl font-medium text-pink-600"
-            >
-              Carregando produtos...
-            </motion.p>
-          </div>
+      <section className="w-full min-h-[80vh] flex items-center justify-center bg-gradient-to-b from-pink-50 to-white">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              rotate: [0, 360],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full"
+          />
+          <motion.p
+            animate={{
+              opacity: [0.5, 1, 0.5],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="text-xl font-medium text-pink-600"
+          >
+            Carregando produtos...
+          </motion.p>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="w-full py-16 bg-gradient-to-b from-pink-50 to-white">
-      <div className="container mx-auto px-4">
-        <h2 className="text-4xl font-bold text-center text-pink-600 mb-4">
-          Produtos de Páscoa 2025
-        </h2>
-        <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-          Deliciosos produtos artesanais feitos com amor e carinho para sua
-          Páscoa
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {products.map((product) => (
+    <section className="w-full min-h-[80vh] bg-gradient-to-b from-pink-50 to-white">
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-12">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-5xl font-bold text-pink-600 mb-4 flex items-center justify-center space-x-2"
+          >
+            <span>{getCategoryTitle(category)}</span>
+            <Star className="w-8 h-8 text-pink-500" />
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-gray-600 max-w-2xl mx-auto text-lg"
+          >
+            {getCategoryDescription(category)}
+          </motion.p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {products.slice(0, 4).map((product, index) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              viewport={{ once: true }}
-              className="flex flex-col items-center bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden hover:scale-105 p-6"
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="relative aspect-square rounded-2xl overflow-hidden shadow-sm bg-white"
             >
-              <div className="relative w-full aspect-[4/3] mb-6">
-                <div className="absolute inset-0 rounded-xl overflow-hidden border-4 border-pink-100">
-                  <Image
-                    src={product.image || ''}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    priority={false}
-                  />
-                </div>
-              </div>
-              <div className="text-center flex flex-col flex-1 w-full">
-                <h3 className="text-xl font-semibold text-pink-600 mb-2">
-                  {product.name}
-                </h3>
-                <p className="text-gray-600 mb-4 flex-grow">{product.description}</p>
-                <div className="flex flex-col items-center space-y-4 mt-auto pt-4">
-                  <p className="text-pink-500 font-bold text-xl">
-                    R$ {product.price.toFixed(2)}
-                  </p>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleAddToCart(product)}
-                    className="w-full bg-pink-600 text-white px-6 py-2 rounded-full hover:bg-pink-700 transition-colors duration-300 flex items-center justify-center space-x-2"
-                  >
-                    <span>Adicionar ao carrinho</span>
-                    <span>🛒</span>
-                  </motion.button>
-                </div>
+              <Image
+                src={product.image || ""}
+                alt={product.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                <h3 className="text-lg font-bold mb-1 text-white">{product.name}</h3>
+                <p className="text-2xl font-bold text-pink-200">R$ {product.price.toFixed(2)}</p>
+                <button
+                  onClick={() => handleAddToCart(product)}
+                  className="mt-2 w-full bg-pink-600 text-white py-2 rounded-full hover:bg-pink-700 transition-colors duration-300 flex items-center justify-center space-x-2"
+                >
+                  <span>Adicionar</span>
+                  <span>🛒</span>
+                </button>
               </div>
             </motion.div>
           ))}
+
+          {/* "Ver todos" card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden group cursor-pointer hover:bg-pink-50 transition-colors duration-300"
+          >
+            <div className="p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-pink-600 mb-1">
+                  Ver todos em {getCategoryTitle(category)}
+                </h3>
+                <p className="text-gray-600">
+                  Explore nossa coleção completa de produtos
+                </p>
+              </div>
+              <div className="bg-pink-50 p-4 rounded-full group-hover:bg-pink-100 transition-colors duration-300">
+                <ArrowRight className="w-6 h-6 text-pink-600" />
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
 
@@ -190,7 +254,7 @@ const ProductList = ({ onOrderClick }: ProductListProps) => {
           setSelectedProduct(null);
         }}
         onConfirm={handleChocolateOption}
-        product={selectedProduct || { name: '', image: '' }}
+        product={selectedProduct || { name: "", image: "" }}
       />
     </section>
   );

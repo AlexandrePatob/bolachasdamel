@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 import Hero from "../components/Hero";
 import AboutUs from "../components/AboutUs";
-import EasterFavorites from "../components/EasterFavorites";
-import ProductList from "../components/ProductList";
+import EasterFavorites from "../components/FeaturedProducts";
+import FeaturedSection from "../components/FeaturedSection";
 import Footer from "../components/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import Navigation from "../components/Navigation";
@@ -12,8 +12,8 @@ import CartIcon from "../components/CartIcon";
 import { motion } from "framer-motion";
 import { CartItem } from "@/types/cart";
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -37,13 +37,16 @@ export default function Home() {
             : item
         );
       }
-      return [...prevItems, { 
-        ...product, 
-        quantity: 1,
-        product_id: product.id,
-        has_chocolate_option: product.has_chocolate_option,
-        has_chocolate: product.has_chocolate
-      }];
+      return [
+        ...prevItems,
+        {
+          ...product,
+          quantity: 1,
+          product_id: product.id,
+          has_chocolate_option: product.has_chocolate_option,
+          has_chocolate: product.has_chocolate,
+        },
+      ];
     });
 
     // If this is the first item, open the cart
@@ -72,14 +75,24 @@ export default function Home() {
     setCartItems([]);
   };
 
+  const otherCategories = [
+    { id: "fe", label: "Fé" },
+    { id: "pascoa", label: "Páscoa" },
+    { id: "outros", label: "Outros" }
+  ];
+
   const tabs = [
     {
-      id: "produtos",
-      label: "Produtos",
+      id: "maes",
+      label: "Dia das Mães",
       content: (
         <>
-          <EasterFavorites onOrderClick={handleOrderClick} />
-          <ProductList onOrderClick={handleOrderClick} />
+          <FeaturedSection
+            category="maes"
+            title="Presentes para o Dia das Mães"
+            description="Presentes especiais para celebrar o amor e carinho das mães"
+            image="/images/mothers-day.jpg"
+          />
         </>
       ),
     },
@@ -111,7 +124,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <Navigation tabs={tabs} />
+          <Navigation tabs={tabs} otherCategories={otherCategories} />
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
