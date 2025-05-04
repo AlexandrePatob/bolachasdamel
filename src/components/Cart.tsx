@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import CartIcon from './CartIcon';
-import CartModal from './CartModal';
-import { CartItem } from '@/types/cart';
+import { useState } from "react";
+import CartIcon from "./CartIcon";
+import CartModal from "./CartModal";
+import { CartItem } from "@/types/cart";
 
 export default function Cart() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -9,15 +9,13 @@ export default function Cart() {
   const [isNewItem, setIsNewItem] = useState(false);
 
   const handleUpdateQuantity = (id: string, quantity: number) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id ? { ...item, quantity } : item
-      )
+    setItems((prevItems) =>
+      prevItems.map((item) => (item.id === id ? { ...item, quantity } : item))
     );
   };
 
   const handleRemoveItem = (id: string) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== id));
+    setItems((prevItems) => prevItems.filter((item) => item.id !== id));
   };
 
   const handleClearCart = () => {
@@ -28,7 +26,10 @@ export default function Cart() {
     setIsModalOpen(true);
   };
 
-  const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
 
   return (
     <>
@@ -41,11 +42,11 @@ export default function Cart() {
       <CartModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        items={items as import('@/lib/cart').CartItem[]}
+        items={items as import("@/lib/cart").CartItem[]}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}
       />
     </>
   );
-} 
+}

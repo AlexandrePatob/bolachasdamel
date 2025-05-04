@@ -14,7 +14,7 @@ interface CartModalProps {
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
-  isKitBuilder: boolean;
+  isKitBuilder?: boolean;
 }
 
 interface CustomerData {
@@ -35,7 +35,7 @@ const CartModal = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
-  isKitBuilder,
+  isKitBuilder = false,
 }: CartModalProps) => {
   const [step, setStep] = useState<"cart" | "form">("cart");
   const [items, setItems] = useState(initialItems);
