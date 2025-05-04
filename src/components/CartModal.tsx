@@ -14,6 +14,7 @@ interface CartModalProps {
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
+  isKitBuilder: boolean;
 }
 
 interface CustomerData {
@@ -34,6 +35,7 @@ const CartModal = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
+  isKitBuilder,
 }: CartModalProps) => {
   const [step, setStep] = useState<"cart" | "form">("cart");
   const [items, setItems] = useState(initialItems);
@@ -84,7 +86,7 @@ const CartModal = ({
         customer_phone: customerData.phone,
         customer_address: `${customerData.address}, ${customerData.number}`,
         complement: customerData.complement,
-        observations: customerData.observations,
+        observations: isKitBuilder ? "Kit montado:" + customerData.observations : customerData.observations,
         delivery_date: customerData.delivery_date,
         items: items.map((item) => ({
           product_id: item.id,
@@ -146,8 +148,8 @@ const CartModal = ({
         `Data de Entrega: ${new Date(
           customerData.delivery_date
         ).toLocaleDateString("pt-BR")}%0A` +
-        (customerData.observations
-          ? `Observações: ${customerData.observations}%0A`
+        (customerData.observations || isKitBuilder
+          ? `Observações: ${isKitBuilder ? "Kit montado:" + customerData.observations : customerData.observations}%0A`
           : "") +
         `%0APedido:%0A` +
         items

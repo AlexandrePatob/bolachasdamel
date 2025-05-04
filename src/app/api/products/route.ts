@@ -5,8 +5,6 @@ import { getProducts } from "@/lib/supabase";
 export const revalidate = 300;
 
 export async function GET(request: Request) {
-  // Adiciona timestamp para forçar cache busting
-  const timestamp = Date.now();
 
   try {
     // Extrai o parâmetro category da URL
@@ -21,7 +19,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Error fetching products:", error);
     return NextResponse.json(
-      { error: "Failed to fetch products", timestamp },
+      { error: "Failed to fetch products" },
       {
         status: 500,
         headers: {

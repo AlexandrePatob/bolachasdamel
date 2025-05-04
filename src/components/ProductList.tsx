@@ -10,6 +10,8 @@ import { validateQuantity } from "@/lib/quantityRules";
 
 interface ProductListProps {
   category: string;
+  showTitle?: boolean;
+  isKitBuilder?: boolean;
   onOrderClick: (product: {
     id: string;
     product_id: string;
@@ -23,7 +25,7 @@ interface ProductListProps {
   }) => void;
 }
 
-const ProductList = ({ category, onOrderClick }: ProductListProps) => {
+const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = false }: ProductListProps) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -110,7 +112,7 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
           has_chocolate: false,
           quantity: minQty,
         });
-        toast.success(`${product.name} adicionado ao carrinho!`, {
+        toast.success(`${product.name} adicionado ao ${isKitBuilder ? "kit" : "carrinho"}!`, {
           duration: 2000,
           icon: "🛒",
           style: {
@@ -151,7 +153,7 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
         quantity: minQty,
       });
 
-      toast.success(`${selectedProduct.name} adicionado ao carrinho!`, {
+      toast.success(`${selectedProduct.name} adicionado ao ${isKitBuilder ? "kit" : "carrinho"}!`, {
         duration: 2000,
         icon: "🛒",
         style: {
@@ -202,12 +204,13 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
   }
 
   return (
-    <section className="w-full min-h-[80vh] bg-gradient-to-b from-pink-50 to-white">
+    <section className={`w-full ${showTitle ? "min-h-[80vh]" : "min-h-[40vh]"} bg-gradient-to-b from-pink-50 to-white`}>
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+        {showTitle && (
+          <div className="text-center mb-12">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-5xl font-bold text-pink-600 mb-4 flex items-center justify-center space-x-2"
           >
             <span>{getCategoryTitle(category)}</span>
@@ -218,11 +221,12 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
             transition={{ delay: 0.2 }}
             className="text-gray-600 max-w-2xl mx-auto text-lg"
           >
-            {getCategoryDescription(category)}
-          </motion.p>
-        </div>
+              {getCategoryDescription(category)}
+            </motion.p>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 ${showTitle ? "md:grid-cols-3" : "md:grid-cols-2"} gap-4`}>
           {products?.map((product, index) => (
             <motion.div
               key={product.id}
@@ -232,36 +236,72 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
               className="relative aspect-square rounded-2xl overflow-hidden bg-white"
             >
               <div
-                className="relative w-full h-full cursor-pointer"
+                className="relative w-full h-full cursor-pointer group"
                 onClick={() => handleProductClick(product)}
               >
                 <Image
                   src={product.image || ""}
                   alt={product.name}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-transform duration-500 group-hover:scale-110"
                   sizes="(max-width: 768px) 100vw, 33vw"
                 />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 text-white bg-gradient-to-t from-black/60 to-transparent">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base md:text-lg font-bold mb-1 text-white">
+                      <h3 className="text-base md:text-lg font-bold mb-1 text-white transform transition-transform duration-300 group-hover:translate-y-[-4px]">
                         {product.name}
                       </h3>
-                      <p className="text-xl md:text-2xl font-bold text-pink-200">
-                        R$ {product.price.toFixed(2)}
+                      <p className="text-xl md:text-2xl font-bold text-pink-200 transform transition-transform duration-300 group-hover:translate-y-[-4px]">
+                        {product.price > 0 && `R$ ${product.price.toFixed(2)}`}
                       </p>
+                      {(product.has_chocolate_option || (product.product_quantity_rules && product.product_quantity_rules.length > 0)) && (
+                        <motion.p 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="text-sm text-pink-200 mt-1 flex items-center"
+                        >
+                          <motion.span 
+                            animate={{ rotate: [0, 360] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                            className="mr-1"
+                          >
+                            ⚙️
+                          </motion.span>
+                          Clique para ver opções
+                        </motion.p>
+                      )}
                     </div>
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddToCart(product);
                       }}
-                      className="bg-pink-600 text-white px-4 py-2 rounded-full hover:bg-pink-700 transition-colors duration-300 flex items-center justify-center space-x-2"
+                      className={`${
+                        product.has_chocolate_option || (product.product_quantity_rules && product.product_quantity_rules.length > 0)
+                          ? "bg-pink-500 hover:bg-pink-600"
+                          : "bg-pink-600 hover:bg-pink-700"
+                      } text-white px-4 py-2 rounded-full transition-colors duration-300 flex items-center justify-center space-x-2`}
                     >
                       <span>Adicionar</span>
-                      <span>🛒</span>
-                    </button>
+                      <motion.span
+                        animate={{ 
+                          rotate: [0, 10, -10, 0],
+                          scale: [1, 1.2, 1.2, 1]
+                        }}
+                        transition={{ 
+                          duration: 0.5,
+                          repeat: Infinity,
+                          repeatDelay: 2
+                        }}
+                      >
+                        🛒
+                      </motion.span>
+                    </motion.button>
                   </div>
                 </div>
               </div>
