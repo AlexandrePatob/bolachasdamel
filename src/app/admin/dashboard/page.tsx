@@ -998,6 +998,12 @@ export default function AdminDashboard() {
                     {order.items.map((item) => (
                       <div key={item.id}>
                         {item.quantity}x {item.product?.name}
+                        {item.has_chocolate && " (Com chocolate)"}
+                        {item.options && item.options.length > 0 && (
+                          <div className="ml-4 text-xs text-gray-600">
+                            Opções: {item.options.map(opt => opt.option.name).join(", ")}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </td>
@@ -1168,6 +1174,12 @@ export default function AdminDashboard() {
                   {order.items.map((item) => (
                     <div key={item.id} className="text-sm text-gray-500">
                       {item.quantity}x {item.product?.name}
+                      {item.has_chocolate && " (Com chocolate)"}
+                      {item.options && item.options.length > 0 && (
+                        <div className="ml-4 text-xs text-gray-600">
+                          Opções: {item.options.map(opt => opt.option.name).join(", ")}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

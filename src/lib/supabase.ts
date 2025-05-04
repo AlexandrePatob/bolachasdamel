@@ -1,12 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import {
-  Customer,
-  Order,
-  OrderItem,
-  OrderWithItems,
-  Product,
-  CreateOrder,
-} from "@/types/database";
+import { Order, OrderWithItems } from "@/types/database";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -18,8 +11,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Products
-export async function getProducts() {
-  const { data, error } = await supabase
+export async function getProducts(category?: string) {
+  const query = supabase
     .from("products")
     .select(
       `
@@ -28,11 +21,31 @@ export async function getProducts() {
             description,
             price,
             image,
-            has_chocolate_option
+            has_chocolate_option,
+            category,
+            product_options (
+              id,
+              type,
+              name,
+              price_delta,
+              image
+            ),
+            product_quantity_rules (
+              id,
+              min_qty,
+              max_qty,
+              price,
+              extra_per_unit
+            )
         `
     )
-    .eq("is_available", true)
-    .order("created_at", { ascending: true });
+    .eq("is_available", true);
+
+  if (category) {
+    query.eq("category", category);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: true });
 
   if (error) throw error;
   return data;
@@ -87,9 +100,11 @@ export async function createOrderWithCustomer(orderData: {
     product_id: string;
     quantity: number;
     has_chocolate: boolean;
+    selected_options?: { id: string }[];
   }[];
   observations?: string;
   delivery_date: string;
+  total_amount: number;
 }) {
   // Validar dados do pedido
   if (
@@ -160,18 +175,12 @@ export async function createOrderWithCustomer(orderData: {
 
   if (productsError) throw productsError;
 
-  // Calcular total do pedido
-  const total_amount = orderData.items.reduce((total, item) => {
-    const product = products.find((p) => p.id === item.product_id);
-    return total + (product?.price || 0) * item.quantity;
-  }, 0);
-
   // Criar pedido
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
       customer_id: existingCustomer.id,
-      total_amount,
+      total_amount: orderData.total_amount,
       delivery_address: orderData.customer_address,
       observations: orderData.observations || null,
       delivery_date: orderData.delivery_date,
@@ -191,11 +200,28 @@ export async function createOrderWithCustomer(orderData: {
     has_chocolate: item.has_chocolate,
   }));
 
-  const { error: itemsError } = await supabase
+  const { data: createdOrderItems, error: itemsError } = await supabase
     .from("order_items")
-    .insert(orderItems);
+    .insert(orderItems)
+    .select();
 
   if (itemsError) throw itemsError;
+
+  // Create order item options
+  const orderItemOptions = orderData.items.flatMap((item, index) => 
+    (item.selected_options || []).map(option => ({
+      order_item_id: createdOrderItems[index].id,
+      option_id: option.id
+    }))
+  );
+
+  if (orderItemOptions.length > 0) {
+    const { error: optionsError } = await supabase
+      .from("order_item_options")
+      .insert(orderItemOptions);
+
+    if (optionsError) throw optionsError;
+  }
 
   // Buscar o pedido completo com os itens e produtos
   const { data: completeOrder, error: completeOrderError } = await supabase
@@ -206,7 +232,10 @@ export async function createOrderWithCustomer(orderData: {
       customer:customers(*),
       items:order_items(
         *,
-        product:products(*)
+        product:products(*),
+        options:order_item_options(
+          option:product_options(*)
+        )
       )
     `
     )
@@ -331,21 +360,21 @@ export async function getAdminOrders() {
     .from("orders")
     .select(
       `
-            *,
-            customer:customers(*),
-            items:order_items(
-              id,
-              quantity,
-              unit_price,
-              has_chocolate,
-              product:products(name, image, has_chocolate_option)
-            )
-        `
+      *,
+      customer:customers(*),
+      items:order_items(
+        *,
+        product:products(*),
+        options:order_item_options(
+          option:product_options(*)
+        )
+      )
+    `
     )
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data as OrderWithItems[];
+  return data;
 }
 
 export async function verifyAdminCredentials(email: string, password: string) {
@@ -359,10 +388,7 @@ export async function verifyAdminCredentials(email: string, password: string) {
 }
 
 export async function deleteOrder(id: string) {
-  const { error } = await supabase
-    .from("orders")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("orders").delete().eq("id", id);
 
   if (error) throw error;
 }

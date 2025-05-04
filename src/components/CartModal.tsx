@@ -1,17 +1,20 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { CartItem, clearCart, updateCartItemQuantity } from "@/lib/cart";
+import { validateQuantity } from "@/lib/quantityRules";
+import { ProductOption } from "@/types/database";
 
 interface CartModalProps {
   isOpen: boolean;
   onClose: () => void;
-  items: CartItem[];
+  items: (CartItem & { selected_options?: ProductOption[] })[];
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
+  isKitBuilder?: boolean;
 }
 
 interface CustomerData {
@@ -32,6 +35,7 @@ const CartModal = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
+  isKitBuilder = false,
 }: CartModalProps) => {
   const [step, setStep] = useState<"cart" | "form">("cart");
   const [items, setItems] = useState(initialItems);
@@ -51,10 +55,25 @@ const CartModal = ({
     setItems(initialItems);
   }, [initialItems]);
 
-  const total = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const calculateTotalPrice = (
+    item: CartItem & { selected_options?: ProductOption[] }
+  ) => {
+    const optionsPrice =
+      item.selected_options?.reduce(
+        (sum: number, option: ProductOption) => sum + option.price_delta,
+        0
+      ) || 0;
+    const validation = validateQuantity(
+      item.quantity,
+      item.product_quantity_rules
+    );
+    const rulePrice = validation.price || item.price * item.quantity;
+    return rulePrice + optionsPrice * item.quantity;
+  };
+
+  const total = useMemo(() => {
+    return items.reduce((sum, item) => sum + calculateTotalPrice(item), 0);
+  }, [items]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,13 +86,15 @@ const CartModal = ({
         customer_phone: customerData.phone,
         customer_address: `${customerData.address}, ${customerData.number}`,
         complement: customerData.complement,
-        observations: customerData.observations,
+        observations: isKitBuilder ? "Kit montado:" + customerData.observations : customerData.observations,
         delivery_date: customerData.delivery_date,
         items: items.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
           has_chocolate: item.has_chocolate,
+          selected_options: item.selected_options || [],
         })),
+        total_amount: total,
       };
 
       const response = await fetch("/api/orders", {
@@ -93,7 +114,7 @@ const CartModal = ({
         duration: 5000,
         position: "top-center",
       });
-      
+
       // Limpa o carrinho após sucesso
       handleCartClear();
 
@@ -114,7 +135,7 @@ const CartModal = ({
 
       // Fecha o modal
       onClose();
-      
+
       // Abre o WhatsApp
       const message =
         `Olá! Gostaria de fazer um pedido:%0A%0A` +
@@ -124,9 +145,11 @@ const CartModal = ({
         `Endereço: ${customerData.address}, ${customerData.number}${
           customerData.complement ? ` - ${customerData.complement}` : ""
         }%0A` +
-        `Data de Entrega: ${new Date(customerData.delivery_date).toLocaleDateString('pt-BR')}%0A` +
-        (customerData.observations
-          ? `Observações: ${customerData.observations}%0A`
+        `Data de Entrega: ${new Date(
+          customerData.delivery_date
+        ).toLocaleDateString("pt-BR")}%0A` +
+        (customerData.observations || isKitBuilder
+          ? `Observações: ${isKitBuilder ? "Kit montado:" + customerData.observations : customerData.observations}%0A`
           : "") +
         `%0APedido:%0A` +
         items
@@ -138,7 +161,7 @@ const CartModal = ({
                       item.has_chocolate ? "Com chocolate" : "Sem chocolate"
                     })`
                   : ""
-              } - ${item.quantity}x - R$ ${(item.price * item.quantity).toFixed(
+              } - ${item.quantity}x - R$ ${calculateTotalPrice(item).toFixed(
                 2
               )}`
           )
@@ -148,6 +171,7 @@ const CartModal = ({
       const url = `https://wa.me/554198038007?text=${message}`;
       const win = window.open(url, "_blank", "noopener,noreferrer");
 
+      // TODO: Tem um bug aqui, arrumar depois
       if (!win || win.closed || typeof win.closed === "undefined") {
         window.location.href = url;
       }
@@ -185,6 +209,19 @@ const CartModal = ({
   };
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    const item = items.find((item) => item.id === itemId);
+    if (!item) return;
+
+    const validation = validateQuantity(newQuantity, item.product_quantity_rules);
+    if (!validation.isValid) {
+      toast.error(validation.message || "Quantidade inválida");
+      return;
+    }
+
+    if (newQuantity <= 0) {
+      handleItemRemove(itemId);
+      return;
+    }
     const updatedItems = items.map((item) =>
       item.id === itemId ? { ...item, quantity: newQuantity } : item
     );
@@ -260,7 +297,11 @@ const CartModal = ({
                                 {item.name}
                               </h3>
                               <p className="text-gray-600">
-                                R$ {item.price.toFixed(2)}
+                                {(() => {
+                                  return `R$ ${calculateTotalPrice(
+                                    item
+                                  ).toFixed(2)}`;
+                                })()}
                               </p>
                               {item.has_chocolate_option && (
                                 <div className="mt-2 flex items-center space-x-4">
@@ -304,7 +345,14 @@ const CartModal = ({
                                       Math.max(0, item.quantity - 1)
                                     )
                                   }
-                                  className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                  disabled={(() => {
+                                    const validation = validateQuantity(
+                                      item.quantity - 1,
+                                      item.product_quantity_rules
+                                    );
+                                    return !validation.isValid;
+                                  })()}
+                                  className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   -
                                 </button>
@@ -343,18 +391,26 @@ const CartModal = ({
                         </div>
 
                         <div className="mb-4 p-4 bg-pink-50 rounded-lg border border-pink-100">
-                          <h3 className="text-lg font-semibold text-pink-600 mb-2">Entrega e Pagamento</h3>
+                          <h3 className="text-lg font-semibold text-pink-600 mb-2">
+                            Entrega e Pagamento
+                          </h3>
                           <p className="text-pink-700 text-sm mb-3">
-                            O valor do frete e a forma de pagamento serão combinados via WhatsApp após a confirmação do pedido.
+                            O valor do frete e a forma de pagamento serão
+                            combinados via WhatsApp após a confirmação do
+                            pedido.
                           </p>
                           <div className="space-y-2">
                             <div className="p-3 bg-white rounded-lg border border-pink-100 flex items-center">
                               <span className="text-pink-600 mr-2">📍</span>
-                              <span className="text-gray-700">Retirada em Santa Felicidade</span>
+                              <span className="text-gray-700">
+                                Retirada em Santa Felicidade
+                              </span>
                             </div>
                             <div className="p-3 bg-white rounded-lg border border-pink-100 flex items-center">
                               <span className="text-pink-600 mr-2">🚗</span>
-                              <span className="text-gray-700">Combinar via WhatsApp (Uber entrega)</span>
+                              <span className="text-gray-700">
+                                Combinar via WhatsApp (Uber entrega)
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -554,15 +610,18 @@ const CartModal = ({
                         const today = new Date();
                         let daysToAdd = 2;
                         let minDate = new Date(today);
-                        
+
                         while (daysToAdd > 0) {
                           minDate.setDate(minDate.getDate() + 1);
-                          if (minDate.getDay() !== 0 && minDate.getDay() !== 6) {
+                          if (
+                            minDate.getDay() !== 0 &&
+                            minDate.getDay() !== 6
+                          ) {
                             daysToAdd--;
                           }
                         }
-                        
-                        return minDate.toISOString().split('T')[0];
+
+                        return minDate.toISOString().split("T")[0];
                       })()}
                       value={customerData.delivery_date}
                       onChange={(e) =>

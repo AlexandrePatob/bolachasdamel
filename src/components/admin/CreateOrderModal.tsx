@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '@/types/database';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
+import { validateQuantity } from '@/lib/quantityRules';
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -63,13 +64,19 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     const product = products.find(p => p.id === selectedProduct);
     if (!product) return;
 
+    const validation = validateQuantity(quantity, product.product_quantity_rules);
+    if (!validation.isValid && validation.message) {
+      toast.error(validation.message);
+      return;
+    }
+
     const lastItem = items[items.length - 1];
     const hasChocolate = lastItem?.product_id === selectedProduct ? lastItem.has_chocolate : false;
 
     setItems([...items, {
       product_id: selectedProduct,
       quantity,
-      unit_price: product.price,
+      unit_price: validation.price || product.price,
       has_chocolate: hasChocolate,
     }]);
 
@@ -79,6 +86,35 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
 
   const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleQuantityChange = (index: number, newQuantity: number) => {
+    const item = items[index];
+    const product = products.find(p => p.id === item.product_id);
+    if (!product) return;
+
+    const validation = validateQuantity(newQuantity, product.product_quantity_rules);
+    if (!validation.isValid && validation.message) {
+      toast.error(validation.message);
+      return;
+    }
+
+    const newItems = [...items];
+    newItems[index] = {
+      ...newItems[index],
+      quantity: newQuantity,
+      unit_price: validation.price || product.price,
+    };
+    setItems(newItems);
+  };
+
+  const handleChocolateChange = (index: number, hasChocolate: boolean) => {
+    const newItems = [...items];
+    newItems[index] = {
+      ...newItems[index],
+      has_chocolate: hasChocolate,
+    };
+    setItems(newItems);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,7 +138,16 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
           complement: customer.complement,
           observations: customer.observations,
           delivery_date: customer.delivery_date,
-          items,
+          items: items.map(item => {
+            const product = products.find(p => p.id === item.product_id);
+            if (!product) return item;
+
+            const validation = validateQuantity(item.quantity, product.product_quantity_rules);
+            return {
+              ...item,
+              unit_price: validation.price || product.price,
+            };
+          }),
         }),
       });
 
@@ -117,7 +162,14 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
     }
   };
 
-  const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+  const totalAmount = items.reduce((sum, item) => {
+    const product = products.find(p => p.id === item.product_id);
+    if (!product) return sum;
+
+    const validation = validateQuantity(item.quantity, product.product_quantity_rules);
+    const unitPrice = validation.price || product.price;
+    return sum + (item.quantity * unitPrice);
+  }, 0);
 
   return (
     <AnimatePresence>
@@ -307,7 +359,22 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                           type="number"
                           min="1"
                           value={quantity}
-                          onChange={(e) => setQuantity(parseInt(e.target.value))}
+                          onChange={(e) => {
+                            const newQuantity = parseInt(e.target.value);
+                            if (newQuantity < 1) {
+                              toast.error("Quantidade mínima é 1 unidade");
+                              return;
+                            }
+                            const product = products.find(p => p.id === selectedProduct);
+                            if (product) {
+                              const validation = validateQuantity(newQuantity, product.product_quantity_rules);
+                              if (!validation.isValid && validation.message) {
+                                toast.error(validation.message);
+                                return;
+                              }
+                            }
+                            setQuantity(newQuantity);
+                          }}
                           className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                         />
                       </div>
@@ -364,23 +431,43 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                       const product = products.find(p => p.id === item.product_id);
                       if (!product) return null;
 
+                      const validation = validateQuantity(item.quantity, product.product_quantity_rules);
+                      const unitPrice = validation.price || product.price;
+                      const totalPrice = item.quantity * unitPrice;
+
                       return (
-                        <div key={index} className="flex items-center justify-between bg-white border border-pink-100 rounded-lg p-4">
+                        <div key={index} className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm mb-4">
                           <div className="flex items-center space-x-4">
-                            <div className="relative w-16 h-16">
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                fill
-                                className="object-cover rounded-lg"
-                              />
-                            </div>
+                            {product.image && (
+                              <div className="relative w-16 h-16">
+                                <Image
+                                  src={product.image}
+                                  alt={product.name}
+                                  fill
+                                  className="object-cover rounded-lg"
+                                />
+                              </div>
+                            )}
                             <div>
                               <h4 className="font-medium text-[#6b4c3b]">{product.name}</h4>
-                              <p className="text-sm text-pink-600">Quantidade: {item.quantity}</p>
-                              <p className="text-sm text-[#6b4c3b]">Preço unitário: R$ {item.unit_price.toFixed(2)}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <button
+                                  onClick={() => handleQuantityChange(index, Math.max(1, item.quantity - 1))}
+                                  className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                >
+                                  -
+                                </button>
+                                <span className="text-sm text-[#6b4c3b]">{item.quantity}</span>
+                                <button
+                                  onClick={() => handleQuantityChange(index, item.quantity + 1)}
+                                  className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <p className="text-sm text-[#6b4c3b]">Preço unitário: R$ {unitPrice.toFixed(2)}</p>
                               <p className="text-sm font-medium text-[#6b4c3b]">
-                                Total: R$ {(item.quantity * item.unit_price).toFixed(2)}
+                                Total: R$ {totalPrice.toFixed(2)}
                               </p>
                               {product.has_chocolate_option && (
                                 <div className="mt-2">
@@ -388,14 +475,7 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                                     <input
                                       type="checkbox"
                                       checked={item.has_chocolate}
-                                      onChange={(e) => {
-                                        const newItems = [...items];
-                                        newItems[index] = {
-                                          ...newItems[index],
-                                          has_chocolate: e.target.checked,
-                                        };
-                                        setItems(newItems);
-                                      }}
+                                      onChange={(e) => handleChocolateChange(index, e.target.checked)}
                                       className="form-checkbox h-4 w-4 text-[#6b4c3b] border-pink-200 rounded focus:ring-[#6b4c3b]"
                                     />
                                     <span className="ml-2 text-sm text-[#6b4c3b]">
@@ -407,13 +487,10 @@ export default function CreateOrderModal({ isOpen, onClose, onOrderCreated }: Cr
                             </div>
                           </div>
                           <button
-                            type="button"
                             onClick={() => handleRemoveItem(index)}
                             className="text-red-500 hover:text-red-700"
                           >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            Remover
                           </button>
                         </div>
                       );

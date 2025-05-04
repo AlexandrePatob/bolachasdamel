@@ -20,7 +20,7 @@ const AboutUs = () => {
               className="relative w-full h-[400px] rounded-2xl overflow-hidden shadow-lg"
             >
               <Image
-                src="/images/about-us.png"
+                src="/images/system/about-us.png"
                 alt="Bolachas da Mel"
                 fill
                 className="object-cover"
