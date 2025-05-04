@@ -9,6 +9,7 @@ export interface CartItem {
   image: string;
   has_chocolate_option: boolean;
   has_chocolate: boolean;
+  product_quantity_rules?: import("@/types/database").ProductQuantityRule[];
 }
 
 // Função para gerar um ID único para o item do carrinho baseado no produto e opção de chocolate
@@ -36,6 +37,7 @@ export const addToCart = (product: Product, quantity: number = 1, hasChocolate: 
       image: product.image,
       has_chocolate_option: product.has_chocolate_option,
       has_chocolate: hasChocolate,
+      product_quantity_rules: product.product_quantity_rules,
     });
   }
 

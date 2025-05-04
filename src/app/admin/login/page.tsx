@@ -64,7 +64,7 @@ function LoginForm() {
         <div className="flex flex-col items-center">
           <div className="relative w-20 h-20 mb-4">
             <Image
-              src="/images/logo.png"
+              src="/images/system/logo.png"
               alt="Bolachas da Mel"
               fill
               className="object-contain rounded-full"

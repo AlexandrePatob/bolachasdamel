@@ -26,7 +26,7 @@ const Header = () => {
           <div className="flex justify-between items-center">
             <Link href="/" className="flex items-center">
               <Image
-                src="/images/logo.png"
+                src="/images/system/logo.png"
                 alt="Bolachas da Mel"
                 width={180}
                 height={60}

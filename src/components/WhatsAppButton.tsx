@@ -23,7 +23,7 @@ const WhatsAppButton = () => {
     >
       <div className="relative w-14 h-14">
         <Image
-          src="/images/whatsapp-icon.png"
+          src="/images/system/whatsapp-icon.png"
           alt="WhatsApp"
           width={56}
           height={56}

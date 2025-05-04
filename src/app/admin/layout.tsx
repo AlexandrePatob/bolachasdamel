@@ -24,7 +24,7 @@ export default function AdminLayout({
             <div className="flex items-center space-x-5">
               <div className="relative w-12 h-12">
                 <Image
-                  src="/images/logo.png"
+                  src="/images/system/logo.png"
                   alt="Bolachas da Mel"
                   fill
                   className="object-contain rounded-full"

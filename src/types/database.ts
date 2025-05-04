@@ -8,6 +8,22 @@ export interface CreateOrder {
     shipping_fee: number;
 }
 
+export interface ProductOption {
+    id: string;
+    type: string; // 'laco' ou 'sabor'
+    name: string;
+    price_delta: number;
+    image?: string | null;
+}
+
+export interface ProductQuantityRule {
+    id: string;
+    min_qty: number;
+    max_qty?: number | null;
+    price?: number | null;
+    extra_per_unit?: number | null;
+}
+
 export interface Product {
     id: string;
     name: string;
@@ -17,6 +33,8 @@ export interface Product {
     has_chocolate_option: boolean;
     created_at: string;
     updated_at: string;
+    product_options?: ProductOption[];
+    product_quantity_rules?: ProductQuantityRule[];
 }
 
 export interface Customer {
@@ -41,6 +59,9 @@ export interface OrderItem {
         image: string;
         has_chocolate_option: boolean;
     };
+    options?: {
+        option: ProductOption;
+    }[];
 }
 
 export interface Order {
@@ -78,7 +99,17 @@ export interface Order {
             price: number;
             image: string;
             has_chocolate_option: boolean;
+            product_quantity_rules: {
+                id: string;
+                min_qty: number;
+                max_qty: number | null;
+                price: number | null;
+                extra_per_unit: number | null;
+            }[];
         };
+        options?: {
+            option: ProductOption;
+        }[];
     }[];
 }
 

@@ -3,9 +3,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { Product } from "@/types/database";
+import { Product, ProductOption } from "@/types/database";
 import ChocolateOptionModal from "./ChocolateOptionModal";
-import { Star, ArrowRight } from "lucide-react";
+import ProductDetailsModal from "./ProductDetailsModal";
+import { validateQuantity } from "@/lib/quantityRules";
 
 interface ProductListProps {
   category: string;
@@ -17,6 +18,8 @@ interface ProductListProps {
     image: string;
     has_chocolate_option: boolean;
     has_chocolate: boolean;
+    selected_options?: ProductOption[];
+    quantity: number;
   }) => void;
 }
 
@@ -25,6 +28,7 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showChocolateModal, setShowChocolateModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const getCategoryTitle = (category: string) => {
     switch (category) {
@@ -56,6 +60,11 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
     }
   };
 
+  const getMinQty = (rules?: Product['product_quantity_rules']) => {
+    if (!rules || rules.length === 0) return 1;
+    return Math.min(...rules.map(r => r.min_qty));
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch(`/api/products?category=${category}`, {
@@ -79,18 +88,27 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
 
   const handleAddToCart = useCallback(
     (product: Product) => {
+      const minQty = getMinQty(product.product_quantity_rules);
+      const validation = validateQuantity(minQty, product.product_quantity_rules);
+      if (!validation.isValid && validation.message) {
+        toast.error(validation.message);
+        return;
+      }
+
       if (product.has_chocolate_option) {
         setSelectedProduct(product);
         setShowChocolateModal(true);
       } else {
         onOrderClick({
+          ...product,
           id: product.id,
           product_id: product.id,
           name: product.name,
-          price: product.price,
+          price: validation.price || product.price,
           image: product.image || "",
           has_chocolate_option: product.has_chocolate_option,
           has_chocolate: false,
+          quantity: minQty,
         });
         toast.success(`${product.name} adicionado ao carrinho!`, {
           duration: 2000,
@@ -106,18 +124,31 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
     [onOrderClick]
   );
 
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setShowDetailsModal(true);
+  };
+
   const handleChocolateOption = useCallback(
     (hasChocolate: boolean) => {
       if (!selectedProduct) return;
+      const minQty = getMinQty(selectedProduct.product_quantity_rules);
+      const validation = validateQuantity(minQty, selectedProduct.product_quantity_rules);
+      if (!validation.isValid && validation.message) {
+        toast.error(validation.message);
+        return;
+      }
 
       onOrderClick({
+        ...selectedProduct,
         id: selectedProduct.id,
         product_id: selectedProduct.id,
         name: selectedProduct.name,
-        price: selectedProduct.price,
+        price: validation.price || selectedProduct.price,
         image: selectedProduct.image || "",
         has_chocolate_option: true,
         has_chocolate: hasChocolate,
+        quantity: minQty,
       });
 
       toast.success(`${selectedProduct.name} adicionado ao carrinho!`, {
@@ -180,7 +211,6 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
             className="text-4xl md:text-5xl font-bold text-pink-600 mb-4 flex items-center justify-center space-x-2"
           >
             <span>{getCategoryTitle(category)}</span>
-            <Star className="w-8 h-8 text-pink-500" />
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -192,58 +222,51 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {products.slice(0, 4).map((product, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {products?.map((product, index) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="relative aspect-square rounded-2xl overflow-hidden shadow-sm bg-white"
+              className="relative aspect-square rounded-2xl overflow-hidden bg-white"
             >
-              <Image
-                src={product.image || ""}
-                alt={product.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 50vw, 33vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                <h3 className="text-lg font-bold mb-1 text-white">{product.name}</h3>
-                <p className="text-2xl font-bold text-pink-200">R$ {product.price.toFixed(2)}</p>
-                <button
-                  onClick={() => handleAddToCart(product)}
-                  className="mt-2 w-full bg-pink-600 text-white py-2 rounded-full hover:bg-pink-700 transition-colors duration-300 flex items-center justify-center space-x-2"
-                >
-                  <span>Adicionar</span>
-                  <span>🛒</span>
-                </button>
+              <div
+                className="relative w-full h-full cursor-pointer"
+                onClick={() => handleProductClick(product)}
+              >
+                <Image
+                  src={product.image || ""}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-4 text-white bg-gradient-to-t from-black/60 to-transparent">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base md:text-lg font-bold mb-1 text-white">
+                        {product.name}
+                      </h3>
+                      <p className="text-xl md:text-2xl font-bold text-pink-200">
+                        R$ {product.price.toFixed(2)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                      className="bg-pink-600 text-white px-4 py-2 rounded-full hover:bg-pink-700 transition-colors duration-300 flex items-center justify-center space-x-2"
+                    >
+                      <span>Adicionar</span>
+                      <span>🛒</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           ))}
-
-          {/* "Ver todos" card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="col-span-2 bg-white rounded-2xl shadow-sm overflow-hidden group cursor-pointer hover:bg-pink-50 transition-colors duration-300"
-          >
-            <div className="p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-pink-600 mb-1">
-                  Ver todos em {getCategoryTitle(category)}
-                </h3>
-                <p className="text-gray-600">
-                  Explore nossa coleção completa de produtos
-                </p>
-              </div>
-              <div className="bg-pink-50 p-4 rounded-full group-hover:bg-pink-100 transition-colors duration-300">
-                <ArrowRight className="w-6 h-6 text-pink-600" />
-              </div>
-            </div>
-          </motion.div>
         </div>
       </div>
 
@@ -256,6 +279,18 @@ const ProductList = ({ category, onOrderClick }: ProductListProps) => {
         onConfirm={handleChocolateOption}
         product={selectedProduct || { name: "", image: "" }}
       />
+
+      {selectedProduct && (
+        <ProductDetailsModal
+          isOpen={showDetailsModal}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+          onAddToCart={onOrderClick}
+        />
+      )}
     </section>
   );
 };

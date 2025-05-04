@@ -11,14 +11,16 @@ import CartModal from "../components/CartModal";
 import CartIcon from "../components/CartIcon";
 import { motion } from "framer-motion";
 import { CartItem } from "@/types/cart";
+import ProductList from "@/components/ProductList";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default function Home() {
+export default function Home() {  
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isNewItem, setIsNewItem] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("maes");
 
   const handleOrderClick = (product: {
     id: string;
@@ -27,13 +29,14 @@ export default function Home() {
     image: string;
     has_chocolate_option: boolean;
     has_chocolate: boolean;
+    quantity?: number;
   }) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {
         return prevItems.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + (product.quantity || 1) }
             : item
         );
       }
@@ -41,7 +44,7 @@ export default function Home() {
         ...prevItems,
         {
           ...product,
-          quantity: 1,
+          quantity: product.quantity || 1,
           product_id: product.id,
           has_chocolate_option: product.has_chocolate_option,
           has_chocolate: product.has_chocolate,
@@ -49,21 +52,20 @@ export default function Home() {
       ];
     });
 
-    // If this is the first item, open the cart
-    if (cartItems.length === 0) {
-      setIsCartOpen(true);
-    } else {
-      // Otherwise, trigger the animation
-      setIsNewItem(true);
-      setTimeout(() => setIsNewItem(false), 300);
-    }
+    setIsCartOpen(true);
+    setIsNewItem(true);
+    setTimeout(() => setIsNewItem(false), 300);
   };
 
   const handleUpdateQuantity = (id: string, quantity: number) => {
+    if (quantity <= 0) {
+      handleRemoveItem(id);
+      return;
+    }
     setCartItems((prevItems) =>
-      prevItems
-        .map((item) => (item.id === id ? { ...item, quantity } : item))
-        .filter((item) => item.quantity > 0)
+      prevItems.map((item) =>
+        item.id === id ? { ...item, quantity } : item
+      )
     );
   };
 
@@ -85,16 +87,6 @@ export default function Home() {
     {
       id: "maes",
       label: "Dia das Mães",
-      content: (
-        <>
-          <FeaturedSection
-            category="maes"
-            title="Presentes para o Dia das Mães"
-            description="Presentes especiais para celebrar o amor e carinho das mães"
-            image="/images/mothers-day.jpg"
-          />
-        </>
-      ),
     },
     {
       id: "sobre",
@@ -102,6 +94,10 @@ export default function Home() {
       content: <AboutUs />,
     },
   ];
+
+  const handleCategoryChange = (categoryId: string) => {
+    setActiveCategory(categoryId);
+  };
 
   return (
     <>
@@ -124,7 +120,14 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <Navigation tabs={tabs} otherCategories={otherCategories} />
+          <Navigation 
+            tabs={tabs} 
+            otherCategories={otherCategories} 
+            onCategoryChange={handleCategoryChange}
+          />
+          {activeCategory !== "sobre" && (
+            <ProductList category={activeCategory} onOrderClick={handleOrderClick} />
+          )}
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -44,7 +44,7 @@ export default function Hero() {
           >
             <div className="absolute inset-0 rounded-full overflow-hidden border-4 border-[#fff9f0] shadow-xl">
               <Image
-                src="/images/logo.png"
+                src="/images/system/logo.png"
                 alt="Bolachas da Mel Logo"
                 fill
                 className="object-cover"
