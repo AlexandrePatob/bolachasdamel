@@ -43,15 +43,16 @@ const ProductDetailsModal = ({
       (sum, option) => sum + option.price_delta,
       0
     );
-    const validation = validateQuantity(
-      quantity,
-      product.product_quantity_rules
-    );
-    const rulePrice = validation.price || product.price;
-    if (optionsPrice > 0 || validation.price) {
-      return rulePrice + optionsPrice * quantity;
+    const validation = validateQuantity(quantity, product.product_quantity_rules);
+    const basePrice = validation.price || product.price;
+
+    if (optionsPrice > 0 && !validation.price) {
+      return optionsPrice * quantity;
     }
-    return rulePrice * quantity;
+
+    return validation.price 
+      ? basePrice + (optionsPrice * quantity)
+      : basePrice * quantity;
   };
 
   const calculateUnitPrice = () => {
