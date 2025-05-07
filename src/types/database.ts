@@ -30,11 +30,13 @@ export interface Product {
     description: string;
     price: number;
     image: string;
+    category: string;
     has_chocolate_option: boolean;
     created_at: string;
     updated_at: string;
     product_options?: ProductOption[];
     product_quantity_rules?: ProductQuantityRule[];
+    unit_quantity: number;
 }
 
 export interface Customer {
@@ -50,6 +52,7 @@ export interface OrderItem {
     order_id: string;
     product_id: string;
     quantity: number;
+    unit_quantity: number;
     unit_price: number;
     has_chocolate: boolean;
     product: {
@@ -91,6 +94,7 @@ export interface Order {
         order_id: string;
         product_id: string;
         quantity: number;
+        unit_quantity: number;
         unit_price: number;
         has_chocolate: boolean;
         product: {
@@ -129,6 +133,7 @@ export interface CreateOrderData {
     items: {
         product_id: string;
         quantity: number;
+        unit_quantity: number;
         has_chocolate: boolean;
     }[];
 } 

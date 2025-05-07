@@ -22,6 +22,7 @@ interface ProductListProps {
     has_chocolate: boolean;
     selected_options?: ProductOption[];
     quantity: number;
+    unit_quantity: number;
   }) => void;
 }
 
@@ -91,7 +92,7 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
   const handleAddToCart = useCallback(
     (product: Product) => {
       const minQty = getMinQty(product.product_quantity_rules);
-      const validation = validateQuantity(minQty, product.product_quantity_rules);
+      const validation = validateQuantity(minQty, product.unit_quantity, product.product_quantity_rules);
       if (!validation.isValid && validation.message) {
         toast.error(validation.message);
         return;
@@ -111,6 +112,7 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
           has_chocolate_option: product.has_chocolate_option,
           has_chocolate: false,
           quantity: minQty,
+          unit_quantity: product.unit_quantity,
         });
         toast.success(`${product.name} adicionado ao ${isKitBuilder ? "kit" : "carrinho"}!`, {
           duration: 2000,
@@ -135,7 +137,7 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
     (hasChocolate: boolean) => {
       if (!selectedProduct) return;
       const minQty = getMinQty(selectedProduct.product_quantity_rules);
-      const validation = validateQuantity(minQty, selectedProduct.product_quantity_rules);
+      const validation = validateQuantity(minQty, selectedProduct.unit_quantity, selectedProduct.product_quantity_rules);
       if (!validation.isValid && validation.message) {
         toast.error(validation.message);
         return;

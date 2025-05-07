@@ -20,6 +20,7 @@ interface ProductDetailsModalProps {
     has_chocolate: boolean;
     selected_options?: ProductOption[];
     quantity: number;
+    unit_quantity: number;
   }) => void;
 }
 
@@ -37,22 +38,27 @@ const ProductDetailsModal = ({
 
   const minQty = getMinQty(product.product_quantity_rules);
   const [quantity, setQuantity] = useState(minQty);
+  const [unitQuantity, setUnitQuantity] = useState(1);
 
   const calculateTotalPrice = () => {
     const optionsPrice = selectedOptions.reduce(
       (sum, option) => sum + option.price_delta,
       0
     );
-    const validation = validateQuantity(quantity, product.product_quantity_rules);
+    const validation = validateQuantity(
+      quantity,
+      unitQuantity,
+      product.product_quantity_rules
+    );
     const basePrice = validation.price || product.price;
 
     if (optionsPrice > 0 && !validation.price) {
-      return optionsPrice * quantity;
+      return optionsPrice * unitQuantity;
     }
 
-    return validation.price 
-      ? basePrice + (optionsPrice * quantity)
-      : basePrice * quantity;
+    return validation.price
+      ? basePrice + optionsPrice * unitQuantity
+      : basePrice * unitQuantity;
   };
 
   const calculateUnitPrice = () => {
@@ -62,6 +68,7 @@ const ProductDetailsModal = ({
     );
     const validation = validateQuantity(
       quantity,
+      unitQuantity,
       product.product_quantity_rules
     );
     const rulePrice = validation.price || product.price;
@@ -82,9 +89,18 @@ const ProductDetailsModal = ({
     setQuantity(newQuantity);
   };
 
+  const handleUnitQuantityChange = (newUnitQuantity: number) => {
+    if (newUnitQuantity < 1) {
+      toast.error("Quantidade de unidades deve ser maior que zero");
+      return;
+    }
+    setUnitQuantity(newUnitQuantity);
+  };
+
   const handleAddToCart = () => {
     const validation = validateQuantity(
       quantity,
+      unitQuantity,
       product.product_quantity_rules
     );
     if (!validation.isValid && validation.message) {
@@ -103,6 +119,7 @@ const ProductDetailsModal = ({
       has_chocolate: false,
       selected_options: selectedOptions,
       quantity: quantity,
+      unit_quantity: unitQuantity,
     });
     onClose();
   };
@@ -118,9 +135,9 @@ const ProductDetailsModal = ({
     if (extra) {
       return `A partir do ${
         extra.min_qty
-      }º, cada unidade sai por apenas R$ ${Number(extra.extra_per_unit).toFixed(
-        2
-      )}! Aproveite e leve mais!`;
+      }º item, cada item sai por apenas R$ ${Number(
+        extra.extra_per_unit
+      ).toFixed(2)}! Aproveite e leve mais!`;
     }
     // Se não houver adicional, pode mostrar o preço do primeiro item
     const first = sorted.find((r) => r.min_qty === 1 && r.price != null);
@@ -155,7 +172,7 @@ const ProductDetailsModal = ({
                 <X className="w-6 h-6" />
               </button>
 
-              <div className="relative h-[40vh] md:h-[50vh] w-full bg-pink-50">
+              <div className="relative h-[30vh] sm:h-[40vh] md:h-[50vh] w-full bg-pink-50">
                 <div className="absolute inset-0 p-4">
                   <Image
                     src={selectedOptions[0]?.image || product.image}
@@ -168,86 +185,108 @@ const ProductDetailsModal = ({
                 </div>
               </div>
 
-              <div className="p-6 md:p-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+              <div className="p-4 sm:p-6 md:p-8">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">
                   {product.name}
                 </h2>
-                <p className="text-gray-600 mb-6 text-lg">
+                <p className="text-gray-600 mb-4 sm:mb-6 text-base sm:text-lg">
                   {product.description}
                 </p>
 
                 {product.product_options &&
                   product.product_options.length > 0 && (
-                    <div className="mb-8">
-                      <h3 className="text-xl font-semibold mb-4">Opções</h3>
-                      <div className="space-y-4">
+                    <div className="mb-6">
+                      <h3 className="text-base font-medium text-gray-700 mb-2">Escolha o tipo:</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {product.product_options.map((option) => (
-                          <div
+                          <button
                             key={option.id}
-                            className="flex items-center gap-3"
+                            onClick={() => handleOptionSelect(option)}
+                            className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
+                              selectedOptions.some((o) => o.id === option.id)
+                                ? 'border-pink-500 bg-pink-50'
+                                : 'border-gray-200 hover:border-pink-200'
+                            }`}
                           >
-                            <input
-                              type="radio"
-                              id={option.id}
-                              name="product-option"
-                              checked={selectedOptions.some(
-                                (o) => o.id === option.id
-                              )}
-                              onChange={() => handleOptionSelect(option)}
-                              className="w-5 h-5 text-pink-600"
-                            />
-                            <label
-                              htmlFor={option.id}
-                              className="flex-1 flex items-center justify-between text-lg"
-                            >
-                              <span>{option.name}</span>
-                              {option.price_delta > 0 && (
-                                <span className="text-pink-600 font-semibold">
-                                  +R$ {option.price_delta.toFixed(2)}
-                                </span>
-                              )}
-                            </label>
-                          </div>
+                            <span className="text-sm">{option.name}</span>
+                            {option.price_delta > 0 && (
+                              <span className="text-xs text-pink-600 font-medium">
+                                +R$ {option.price_delta.toFixed(2)}
+                              </span>
+                            )}
+                          </button>
                         ))}
                       </div>
                     </div>
                   )}
 
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex flex-col items-start gap-1">
-                    {product.product_quantity_rules &&
-                      product.product_quantity_rules.length > 0 && (
-                        <div className="mb-1 text-xs text-gray-500 max-w-[200px] md:max-w-44">
-                          {getPriceDescription(product.product_quantity_rules)}
+                <div className="space-y-4">
+                  {product.product_quantity_rules &&
+                    product.product_quantity_rules.length > 0 && (
+                      <div className="text-sm text-gray-500">
+                        {getPriceDescription(product.product_quantity_rules)}
+                      </div>
+                    )}
+
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {product.product_quantity_rules &&
+                          product.product_quantity_rules.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs font-medium text-gray-700">Items:</span>
+                              <div className="ml-1 flex items-center gap-1 bg-white rounded-full p-1 shadow-sm">
+                                <button
+                                  onClick={() => handleQuantityChange(quantity - 1)}
+                                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
+                                  disabled={quantity <= minQty}
+                                >
+                                  -
+                                </button>
+                                <span className="w-6 text-center text-sm font-medium">
+                                  {quantity}
+                                </span>
+                                <button
+                                  onClick={() => handleQuantityChange(quantity + 1)}
+                                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-medium text-gray-700">Unid:</span>
+                          <div className="ml-2 flex items-center gap-1 bg-white rounded-full p-1 shadow-sm">
+                            <button
+                              onClick={() => handleUnitQuantityChange(unitQuantity - 1)}
+                              className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
+                              disabled={unitQuantity <= 1}
+                            >
+                              -
+                            </button>
+                            <span className="w-6 text-center text-sm font-medium">
+                              {unitQuantity}
+                            </span>
+                            <button
+                              onClick={() => handleUnitQuantityChange(unitQuantity + 1)}
+                              className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => handleQuantityChange(quantity - 1)}
-                        className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xl hover:bg-pink-200 transition-colors"
-                        disabled={quantity <= minQty}
-                      >
-                        -
-                      </button>
-                      <span className="w-12 text-center text-xl font-semibold">
-                        {quantity}
-                      </span>
-                      <button
-                        onClick={() => handleQuantityChange(quantity + 1)}
-                        className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xl hover:bg-pink-200 transition-colors"
-                      >
-                        +
-                      </button>
+                      </div>
+                      <div className="text-xl font-bold text-pink-600 whitespace-nowrap">
+                        R$ {calculateTotalPrice().toFixed(2)}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-3xl font-bold text-pink-600">
-                    R$ {calculateTotalPrice().toFixed(2)}
                   </div>
                 </div>
 
                 <button
                   onClick={handleAddToCart}
-                  className="w-full bg-pink-600 text-white py-4 rounded-full hover:bg-pink-700 transition-colors duration-300 text-lg font-semibold"
+                  className="w-full bg-pink-600 text-white py-3 sm:py-4 rounded-full hover:bg-pink-700 transition-colors duration-300 text-base sm:text-lg font-semibold mt-6"
                 >
                   Adicionar ao Carrinho
                 </button>

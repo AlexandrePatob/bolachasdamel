@@ -8,6 +8,7 @@ export interface QuantityValidationResult {
 
 export function validateQuantity(
   quantity: number,
+  unitQuantity: number,
   rules?: ProductQuantityRule[]
 ): QuantityValidationResult {
   if (!rules || rules.length === 0) {
@@ -15,7 +16,11 @@ export function validateQuantity(
   }
 
   if (quantity <= 0) {
-    return { isValid: false, message: "Quantidade deve ser maior que zero" };
+    return { isValid: false, message: "Quantidade de unidades deve ser maior que zero" };
+  }
+
+  if (unitQuantity <= 0) {
+    return { isValid: false, message: "Quantidade de itens deve ser maior que zero" };
   }
 
   // Ordena as regras por min_qty
@@ -31,7 +36,7 @@ export function validateQuantity(
   if (fixedRule) {
     return {
       isValid: true,
-      price: Number(fixedRule.price),
+      price: Number(fixedRule.price) * unitQuantity,
     };
   }
 
@@ -52,17 +57,16 @@ export function validateQuantity(
     const basePrice = lastFixed ? Number(lastFixed.price) : 0;
     const baseQty = lastFixed ? lastFixed.max_qty! : extraRule.min_qty - 1;
     const additionalUnits = quantity - baseQty;
-    const price =
-      basePrice + additionalUnits * Number(extraRule.extra_per_unit);
+    const unitPrice = basePrice + additionalUnits * Number(extraRule.extra_per_unit);
     return {
       isValid: true,
-      price,
+      price: unitPrice * unitQuantity,
     };
   }
 
   // Se não encontrou nenhuma regra aplicável
   return {
     isValid: false,
-    message: `Quantidade mínima é ${sorted[0].min_qty} unidades`,
+    message: `Quantidade mínima é ${sorted[0].min_qty} unidades por item`,
   };
 } 

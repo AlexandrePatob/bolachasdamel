@@ -5,12 +5,16 @@ import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { CartItem, clearCart, updateCartItemQuantity } from "@/lib/cart";
 import { validateQuantity } from "@/lib/quantityRules";
-import { ProductOption } from "@/types/database";
+import { ProductOption, ProductQuantityRule } from "@/types/database";
 
 interface CartModalProps {
   isOpen: boolean;
   onClose: () => void;
-  items: (CartItem & { selected_options?: ProductOption[] })[];
+  items: (CartItem & {
+    selected_options?: ProductOption[];
+    product_quantity_rules?: ProductQuantityRule[];
+    unit_quantity: number;
+  })[];
   onUpdateQuantity: (itemId: string, quantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
@@ -63,12 +67,29 @@ const CartModal = ({
         (sum: number, option: ProductOption) => sum + option.price_delta,
         0
       ) || 0;
+
+    // Se não tiver regras de quantidade, usa o preço unitário
+    if (
+      !item.product_quantity_rules ||
+      item.product_quantity_rules.length === 0
+    ) {
+      return (item.price + optionsPrice) * item.unit_quantity;
+    }
+
+    // Se tiver regras, valida a quantidade
     const validation = validateQuantity(
       item.quantity,
+      item.unit_quantity,
       item.product_quantity_rules
     );
-    const rulePrice = validation.price || item.price * item.quantity;
-    return rulePrice + optionsPrice * item.quantity;
+
+    // Se a validação retornar um preço, usa ele
+    if (validation.price !== undefined) {
+      return validation.price + optionsPrice * item.quantity;
+    }
+
+    // Se não retornar preço, usa o preço unitário
+    return (item.price + optionsPrice) * item.unit_quantity;
   };
 
   const total = useMemo(() => {
@@ -86,11 +107,14 @@ const CartModal = ({
         customer_phone: customerData.phone,
         customer_address: `${customerData.address}, ${customerData.number}`,
         complement: customerData.complement,
-        observations: isKitBuilder ? "Kit montado:" + customerData.observations : customerData.observations,
+        observations: isKitBuilder
+          ? "Kit montado:" + customerData.observations
+          : customerData.observations,
         delivery_date: customerData.delivery_date,
         items: items.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
+          unit_quantity: item.unit_quantity,
           has_chocolate: item.has_chocolate,
           selected_options: item.selected_options || [],
         })),
@@ -149,7 +173,11 @@ const CartModal = ({
           customerData.delivery_date
         ).toLocaleDateString("pt-BR")}%0A` +
         (customerData.observations || isKitBuilder
-          ? `Observações: ${isKitBuilder ? "Kit montado:" + customerData.observations : customerData.observations}%0A`
+          ? `Observações: ${
+              isKitBuilder
+                ? "Kit montado:" + customerData.observations
+                : customerData.observations
+            }%0A`
           : "") +
         `%0APedido:%0A` +
         items
@@ -208,25 +236,60 @@ const CartModal = ({
     toast.success(`${hasChocolate ? "Com" : "Sem"} chocolate`);
   };
 
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
-    const item = items.find((item) => item.id === itemId);
+  const handleQuantityChange = (id: string, quantity: number) => {
+    if (quantity <= 0) {
+      handleItemRemove(id);
+      return;
+    }
+    const item = items.find((i) => i.id === id);
     if (!item) return;
 
-    const validation = validateQuantity(newQuantity, item.product_quantity_rules);
-    if (!validation.isValid) {
-      toast.error(validation.message || "Quantidade inválida");
+    const validation = validateQuantity(
+      quantity,
+      item.unit_quantity,
+      item.product_quantity_rules
+    );
+    if (!validation.isValid && validation.message) {
+      toast.error(validation.message);
       return;
     }
 
-    if (newQuantity <= 0) {
-      handleItemRemove(itemId);
+    // Atualiza o estado local
+    setItems((prevItems) =>
+      prevItems.map((item) => (item.id === id ? { ...item, quantity } : item))
+    );
+
+    // Atualiza o carrinho global
+    updateCartItemQuantity(id, quantity, undefined, item.unit_quantity);
+  };
+
+  const handleUnitQuantityChange = (id: string, unitQuantity: number) => {
+    if (unitQuantity <= 0) {
+      toast.error("Quantidade de unidades deve ser maior que zero");
       return;
     }
-    const updatedItems = items.map((item) =>
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+
+    const validation = validateQuantity(
+      item.quantity,
+      unitQuantity,
+      item.product_quantity_rules
     );
-    setItems(updatedItems);
-    onUpdateQuantity(itemId, newQuantity);
+    if (!validation.isValid && validation.message) {
+      toast.error(validation.message);
+      return;
+    }
+
+    // Atualiza o estado local
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === id ? { ...item, unit_quantity: unitQuantity } : item
+      )
+    );
+
+    // Atualiza o carrinho global
+    updateCartItemQuantity(id, item.quantity, undefined, unitQuantity);
   };
 
   const handleItemRemove = (itemId: string) => {
@@ -338,41 +401,90 @@ const CartModal = ({
                                 </div>
                               )}
                               <div className="flex items-center space-x-2 mt-2">
-                                <button
-                                  onClick={() =>
-                                    handleQuantityChange(
-                                      item.id,
-                                      Math.max(0, item.quantity - 1)
-                                    )
-                                  }
-                                  disabled={(() => {
-                                    const validation = validateQuantity(
-                                      item.quantity - 1,
-                                      item.product_quantity_rules
-                                    );
-                                    return !validation.isValid;
-                                  })()}
-                                  className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  -
-                                </button>
-                                <span className="w-8 text-center">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    handleQuantityChange(
-                                      item.id,
-                                      item.quantity + 1
-                                    )
-                                  }
-                                  className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
-                                >
-                                  +
-                                </button>
+                                <div className="flex flex-col space-y-2">
+                                  {item.product_quantity_rules &&
+                                    item.product_quantity_rules.length > 0 && (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-xs text-gray-600">
+                                          Itens:
+                                        </span>
+                                        <button
+                                          onClick={() =>
+                                            handleQuantityChange(
+                                              item.id,
+                                              Math.max(0, item.quantity - 1)
+                                            )
+                                          }
+                                          disabled={(() => {
+                                            const validation = validateQuantity(
+                                              item.quantity - 1,
+                                              item.unit_quantity,
+                                              item.product_quantity_rules
+                                            );
+                                            return !validation.isValid;
+                                          })()}
+                                          className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="w-6 text-center text-sm">
+                                          {item.quantity}
+                                        </span>
+                                        <button
+                                          onClick={() =>
+                                            handleQuantityChange(
+                                              item.id,
+                                              item.quantity + 1
+                                            )
+                                          }
+                                          className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-sm"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    )}
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs text-gray-600">
+                                      Unidades:
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        handleUnitQuantityChange(
+                                          item.id,
+                                          Math.max(1, item.unit_quantity - 1)
+                                        )
+                                      }
+                                      disabled={(() => {
+                                        const validation = validateQuantity(
+                                          item.quantity,
+                                          item.unit_quantity - 1,
+                                          item.product_quantity_rules
+                                        );
+                                        return !validation.isValid;
+                                      })()}
+                                      className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="w-6 text-center text-sm">
+                                      {item.unit_quantity}
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        handleUnitQuantityChange(
+                                          item.id,
+                                          item.unit_quantity + 1
+                                        )
+                                      }
+                                      className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-sm"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
                                 <button
                                   onClick={() => handleItemRemove(item.id)}
-                                  className="ml-2 text-red-500 hover:text-red-700"
+                                  className="ml-2 text-red-500 hover:text-red-700 text-sm"
                                 >
                                   Remover
                                 </button>
