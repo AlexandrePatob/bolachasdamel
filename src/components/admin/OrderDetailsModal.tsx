@@ -16,6 +16,7 @@ interface OrderItem {
   order_id: string;
   product_id: string;
   quantity: number;
+  unit_quantity: number;
   unit_price: number;
   has_chocolate: boolean;
   selected_options?: ProductOption[];
@@ -77,6 +78,21 @@ export default function OrderDetailsModal({
       console.error("Error deleting order:", error);
       toast.error("Erro ao excluir pedido");
     }
+  };
+
+  const calculateTotalPrice = (item: OrderItem) => {
+    const optionsPrice =
+      item.selected_options?.reduce(
+        (sum: number, option: ProductOption) => sum + option.price_delta,
+        0
+      ) || 0;
+    const validation = validateQuantity(
+      item.quantity,
+      item.unit_quantity,
+      item.product.product_quantity_rules || []
+    );
+    const rulePrice = validation.price || item.unit_price * item.quantity;
+    return rulePrice + optionsPrice * item.quantity;
   };
 
   return (
@@ -206,9 +222,12 @@ export default function OrderDetailsModal({
                           <h4 className="text-lg font-medium text-[#6b4c3b]">
                             {item.product.name}
                           </h4>
-                          <p className="text-sm text-pink-600">
-                            Quantidade: {item.quantity}
-                          </p>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">Itens:</span>
+                            <span className="font-medium">{item.quantity}</span>
+                            <span className="text-sm text-gray-600 ml-4">Unidades:</span>
+                            <span className="font-medium">{item.unit_quantity}</span>
+                          </div>
                           <p className="text-sm text-[#6b4c3b]">
                             Preço unitário: R$ {item.unit_price.toFixed(2)}
                           </p>
@@ -231,23 +250,7 @@ export default function OrderDetailsModal({
                         <div className="text-right">
                           <p className="text-lg font-medium text-[#6b4c3b]">
                             R${" "}
-                            {(() => {
-                              const validation = validateQuantity(
-                                item.quantity,
-                                item.product.product_quantity_rules
-                              );
-                              const unitPrice =
-                                validation.price || item.unit_price;
-                              const optionsPrice =
-                                (item as OrderItem).selected_options?.reduce(
-                                  (sum: number, option: ProductOption) =>
-                                    sum + option.price_delta,
-                                  0
-                                ) || 0;
-                              const totalPrice =
-                                unitPrice + optionsPrice * item.quantity;
-                              return totalPrice.toFixed(2);
-                            })()}
+                            {calculateTotalPrice(item).toFixed(2)}
                           </p>
                         </div>
                       </div>

@@ -99,6 +99,7 @@ export async function createOrderWithCustomer(orderData: {
   items: {
     product_id: string;
     quantity: number;
+    unit_quantity: number;
     has_chocolate: boolean;
     selected_options?: { id: string }[];
   }[];
@@ -121,7 +122,7 @@ export async function createOrderWithCustomer(orderData: {
 
   // Validar cada item do pedido
   for (const item of orderData.items) {
-    if (!item.product_id || item.quantity <= 0) {
+    if (!item.product_id || item.quantity <= 0 || item.unit_quantity <= 0) {
       throw new Error("Dados dos itens incompletos");
     }
   }
@@ -196,6 +197,7 @@ export async function createOrderWithCustomer(orderData: {
     order_id: order.id,
     product_id: item.product_id,
     quantity: item.quantity,
+    unit_quantity: item.unit_quantity,
     unit_price: products.find((p) => p.id === item.product_id)?.price || 0,
     has_chocolate: item.has_chocolate,
   }));

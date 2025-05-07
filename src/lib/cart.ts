@@ -6,6 +6,7 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  unit_quantity: number;
   image: string;
   has_chocolate_option: boolean;
   has_chocolate: boolean;
@@ -17,7 +18,7 @@ const generateCartItemId = (productId: string, hasChocolate: boolean): string =>
   return `${productId}${hasChocolate ? '_chocolate' : '_plain'}`;
 };
 
-export const addToCart = (product: Product, quantity: number = 1, hasChocolate: boolean = false): void => {
+export const addToCart = (product: Product, quantity: number = 1, hasChocolate: boolean = false, unit_quantity: number = 1): void => {
   const cartItems = getCartItems();
   
   const cartItemId = generateCartItemId(product.id, hasChocolate);
@@ -34,6 +35,7 @@ export const addToCart = (product: Product, quantity: number = 1, hasChocolate: 
       name: product.name,
       price: product.price,
       quantity,
+      unit_quantity,
       image: product.image,
       has_chocolate_option: product.has_chocolate_option,
       has_chocolate: hasChocolate,
@@ -44,7 +46,7 @@ export const addToCart = (product: Product, quantity: number = 1, hasChocolate: 
   localStorage.setItem('cartItems', JSON.stringify(cartItems));
 };
 
-export const updateCartItemQuantity = (itemId: string, quantity: number, hasChocolate?: boolean): void => {
+export const updateCartItemQuantity = (itemId: string, quantity: number, hasChocolate?: boolean, unit_quantity?: number): void => {
   const cartItems = getCartItems();
   const itemIndex = cartItems.findIndex(item => item.id === itemId);
 
@@ -56,6 +58,7 @@ export const updateCartItemQuantity = (itemId: string, quantity: number, hasChoc
         ...cartItems[itemIndex],
         quantity,
         ...(hasChocolate !== undefined && { has_chocolate: hasChocolate }),
+        ...(unit_quantity !== undefined && { unit_quantity }),
       };
     }
     localStorage.setItem('cartItems', JSON.stringify(cartItems));

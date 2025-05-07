@@ -33,13 +33,14 @@ export default function Home() {
     has_chocolate_option: boolean;
     has_chocolate: boolean;
     quantity?: number;
+    unit_quantity?: number;
   }) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
       if (existingItem) {
         return prevItems.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: item.quantity + (product.quantity || 1) }
+            ? { ...item, unit_quantity: item.unit_quantity + (product.unit_quantity || 1) }
             : item
         );
       }
@@ -48,6 +49,7 @@ export default function Home() {
         {
           ...product,
           quantity: product.quantity || 1,
+          unit_quantity: 1,
           product_id: product.id,
           has_chocolate_option: product.has_chocolate_option,
           has_chocolate: product.has_chocolate,
