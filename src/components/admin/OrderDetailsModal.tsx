@@ -1,9 +1,11 @@
 import { Order } from "@/types/database";
+import { Product } from "@/types/database";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { validateQuantity } from "@/lib/quantityRules";
+import { useState, useEffect } from "react";
 
 interface ProductOption {
   id: string;
@@ -51,6 +53,29 @@ export default function OrderDetailsModal({
   onOrderUpdated,
   onOrderDeleted,
 }: OrderDetailsModalProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchProducts();
+    }
+  }, [isOpen]);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("/api/products");
+      if (!response.ok) throw new Error("Failed to fetch products");
+      const data = await response.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      toast.error("Erro ao carregar produtos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!order) return null;
 
   const handleDelete = async () => {
@@ -81,18 +106,28 @@ export default function OrderDetailsModal({
   };
 
   const calculateTotalPrice = (item: OrderItem) => {
-    const optionsPrice =
-      item.selected_options?.reduce(
-        (sum: number, option: ProductOption) => sum + option.price_delta,
-        0
-      ) || 0;
+    const product = products.find((p) => p.id === item.product_id);
+    if (!product) return 0;
+
+    const optionsPrice = item.selected_options?.reduce(
+      (sum, option) => sum + option.price_delta,
+      0
+    ) || 0;
+
     const validation = validateQuantity(
       item.quantity,
       item.unit_quantity,
-      item.product.product_quantity_rules || []
+      product.product_quantity_rules || []
     );
-    const rulePrice = validation.price || item.unit_price * item.quantity;
-    return rulePrice + optionsPrice * item.quantity;
+    const basePrice = validation.price || product.price;
+
+    if (optionsPrice > 0 && !validation.price) {
+      return optionsPrice * item.unit_quantity;
+    }
+
+    return validation.price
+      ? basePrice + optionsPrice * item.unit_quantity
+      : basePrice * item.unit_quantity;
   };
 
   return (
@@ -223,14 +258,25 @@ export default function OrderDetailsModal({
                             {item.product.name}
                           </h4>
                           <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-600">Itens:</span>
+                            <span className="text-sm text-gray-600">
+                              Itens:
+                            </span>
                             <span className="font-medium">{item.quantity}</span>
-                            <span className="text-sm text-gray-600 ml-4">Unidades:</span>
-                            <span className="font-medium">{item.unit_quantity}</span>
+                            <span className="text-sm text-gray-600 ml-4">
+                              Unidades:
+                            </span>
+                            <span className="font-medium">
+                              {item.unit_quantity}
+                            </span>
                           </div>
-                          <p className="text-sm text-[#6b4c3b]">
-                            Preço unitário: R$ {item.unit_price.toFixed(2)}
-                          </p>
+                          <div className="border-t border-gray-200 pt-3 mt-3">
+                            <div className="flex justify-between text-sm">
+                              <span>Total:</span>
+                              <span className="font-medium text-primary-600">
+                                R$ {calculateTotalPrice(item).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
                           {item.product.has_chocolate_option && (
                             <p className="text-sm text-pink-600 mt-1">
                               {item.has_chocolate
@@ -246,12 +292,6 @@ export default function OrderDetailsModal({
                                 .join(", ")}
                             </div>
                           )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-medium text-[#6b4c3b]">
-                            R${" "}
-                            {calculateTotalPrice(item).toFixed(2)}
-                          </p>
                         </div>
                       </div>
                     ))}

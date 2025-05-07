@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Product } from "@/types/database";
+import { Product, ProductOption } from "@/types/database";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { validateQuantity } from "@/lib/quantityRules";
@@ -17,6 +17,7 @@ interface OrderItem {
   unit_price: number;
   has_chocolate: boolean;
   unit_quantity: number;
+  selected_options?: ProductOption[];
 }
 
 export default function CreateOrderModal({
@@ -37,8 +38,43 @@ export default function CreateOrderModal({
     delivery_date: "",
   });
   const [items, setItems] = useState<OrderItem[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
+  const [unitQuantity, setUnitQuantity] = useState(1);
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const [quickQuantity, setQuickQuantity] = useState(1);
+  const [quickUnitQuantity, setQuickUnitQuantity] = useState(1);
+  const [quickSelectedOptions, setQuickSelectedOptions] = useState<ProductOption[]>([]);
+
+  const getMinQty = (rules?: Product["product_quantity_rules"]) => {
+    if (!rules || rules.length === 0) return 1;
+    return Math.min(...rules.map((r) => r.min_qty));
+  };
+
+  const calculateTotalPrice = (item: OrderItem) => {
+    const product = products.find((p) => p.id === item.product_id);
+    if (!product) return 0;
+
+    const optionsPrice = item.selected_options?.reduce(
+      (sum, option) => sum + option.price_delta,
+      0
+    ) || 0;
+
+    const validation = validateQuantity(
+      item.quantity,
+      item.unit_quantity,
+      product.product_quantity_rules || []
+    );
+    const basePrice = validation.price || product.price;
+
+    if (optionsPrice > 0 && !validation.price) {
+      return optionsPrice * item.unit_quantity;
+    }
+
+    return validation.price
+      ? basePrice + optionsPrice * item.unit_quantity
+      : basePrice * item.unit_quantity;
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -69,18 +105,31 @@ export default function CreateOrderModal({
     const product = products.find((p) => p.id === selectedProduct);
     if (!product) return;
 
+    const validation = validateQuantity(
+      quantity,
+      unitQuantity,
+      product.product_quantity_rules || []
+    );
+    if (!validation.isValid && validation.message) {
+      toast.error(validation.message);
+      return;
+    }
+
     setItems([
       ...items,
       {
         product_id: product.id,
-        quantity: 1,
-        unit_price: product.price,
+        quantity: quantity,
+        unit_price: validation.price || product.price,
         has_chocolate: false,
-        unit_quantity: 1,
+        unit_quantity: unitQuantity,
+        selected_options: [],
       },
     ]);
 
     setSelectedProduct("");
+    setQuantity(1);
+    setUnitQuantity(1);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -165,6 +214,7 @@ export default function CreateOrderModal({
           complement: customer.complement,
           observations: customer.observations,
           delivery_date: customer.delivery_date,
+          total_amount: totalAmount,
           items: items.map((item) => {
             const product = products.find((p) => p.id === item.product_id);
             if (!product) return item;
@@ -193,18 +243,43 @@ export default function CreateOrderModal({
     }
   };
 
-  const totalAmount = items.reduce((sum, item) => {
-    const product = products.find((p) => p.id === item.product_id);
-    if (!product) return sum;
+  const totalAmount = items.reduce((sum, item) => sum + calculateTotalPrice(item), 0);
+
+  const handleQuickAdd = () => {
+    if (!quickAddProduct) return;
 
     const validation = validateQuantity(
-      item.quantity,
-      item.unit_quantity,
-      product.product_quantity_rules || []
+      quickQuantity,
+      quickUnitQuantity,
+      quickAddProduct.product_quantity_rules || []
     );
-    const unitPrice = validation.price || product.price;
-    return sum + item.quantity * unitPrice;
-  }, 0);
+    if (!validation.isValid && validation.message) {
+      toast.error(validation.message);
+      return;
+    }
+
+    const optionsPrice = quickSelectedOptions.reduce(
+      (sum, option) => sum + option.price_delta,
+      0
+    );
+
+    setItems([
+      ...items,
+      {
+        product_id: quickAddProduct.id,
+        quantity: quickQuantity,
+        unit_price: validation.price || quickAddProduct.price + optionsPrice,
+        has_chocolate: false,
+        unit_quantity: quickUnitQuantity,
+        selected_options: quickSelectedOptions,
+      },
+    ]);
+
+    setQuickAddProduct(null);
+    setQuickQuantity(1);
+    setQuickUnitQuantity(1);
+    setQuickSelectedOptions([]);
+  };
 
   return (
     <AnimatePresence>
@@ -226,9 +301,9 @@ export default function CreateOrderModal({
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-pink-100">
+              <div className="px-8 py-6 border-b border-pink-100">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-semibold text-[#6b4c3b]">
                     Criar Novo Pedido
@@ -255,13 +330,14 @@ export default function CreateOrderModal({
               </div>
 
               {/* Content */}
-              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <form onSubmit={handleSubmit} className="p-8 space-y-8">
                 {/* Informações do Cliente */}
                 <div>
-                  <h3 className="text-lg font-medium text-[#6b4c3b] mb-3">
+                  <h3 className="text-xl font-medium text-[#6b4c3b] mb-4">
                     Informações do Cliente
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
                         Nome
@@ -304,7 +380,9 @@ export default function CreateOrderModal({
                         className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                       />
                     </div>
-                    <div>
+                    </div>
+
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
                         Endereço
                       </label>
@@ -318,6 +396,8 @@ export default function CreateOrderModal({
                         className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                       />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
                         Número
@@ -348,22 +428,9 @@ export default function CreateOrderModal({
                         className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
-                        Observações
-                      </label>
-                      <textarea
-                        value={customer.observations}
-                        onChange={(e) =>
-                          setCustomer({
-                            ...customer,
-                            observations: e.target.value,
-                          })
-                        }
-                        rows={3}
-                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
-                      />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
                         Data de Entrega
@@ -398,119 +465,382 @@ export default function CreateOrderModal({
                         className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                       />
                       <p className="text-gray-500 text-xs mt-1">
-                        Prazo mínimo de 2 dias úteis para produção
-                      </p>
+                          Prazo mínimo de 2 dias úteis
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
+                          Observações
+                        </label>
+                        <textarea
+                          value={customer.observations}
+                          onChange={(e) =>
+                            setCustomer({
+                              ...customer,
+                              observations: e.target.value,
+                            })
+                          }
+                          rows={2}
+                          className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Adicionar Item */}
                 <div>
-                  <h3 className="text-lg font-medium text-[#6b4c3b] mb-3">
+                  <h3 className="text-xl font-medium text-[#6b4c3b] mb-4">
                     Adicionar Item
                   </h3>
+                  <div className="bg-white rounded-lg p-6 border border-pink-100">
+                    <div className="space-y-6">
+                      {!selectedProduct ? (
                   <div className="space-y-4">
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
-                          Produto
-                        </label>
-                        <select
-                          value={selectedProduct}
-                          onChange={(e) => setSelectedProduct(e.target.value)}
-                          className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
-                        >
-                          <option value="">Selecione um produto</option>
-                          {products.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name} - R$ {product.price.toFixed(2)}
-                            </option>
+                          {Array.from(new Set(products.map(p => p.category))).map(category => (
+                            <div key={category} className="border border-pink-100 rounded-lg overflow-hidden">
+                              <button
+                                onClick={() => {
+                                  const categoryElement = document.getElementById(`category-${category}`);
+                                  if (categoryElement) {
+                                    const isExpanded = categoryElement.getAttribute('aria-expanded') === 'true';
+                                    categoryElement.setAttribute('aria-expanded', (!isExpanded).toString());
+                                    categoryElement.style.maxHeight = isExpanded ? '0px' : `${categoryElement.scrollHeight}px`;
+                                  }
+                                }}
+                                className="w-full px-4 py-3 flex items-center justify-between bg-pink-50 hover:bg-pink-100 transition-colors"
+                              >
+                                <h4 className="text-lg font-medium text-[#6b4c3b] capitalize">
+                                  {category}
+                                </h4>
+                                <svg
+                                  className="w-5 h-5 text-[#6b4c3b] transform transition-transform"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 9l-7 7-7-7"
+                                  />
+                                </svg>
+                              </button>
+                              <div
+                                id={`category-${category}`}
+                                aria-expanded="false"
+                                className="max-h-0 overflow-hidden transition-all duration-300 ease-in-out"
+                                style={{ maxHeight: '0px' }}
+                              >
+                                <div className="p-4">
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                    {products
+                                      .filter(p => p.category === category)
+                                      .map((product) => (
+                                        <button
+                                          key={product.id}
+                                          onClick={() => {
+                                            setQuickAddProduct(product);
+                                            const minQty = getMinQty(product.product_quantity_rules);
+                                            setQuickQuantity(minQty);
+                                            setQuickUnitQuantity(1);
+                                          }}
+                                          className="flex flex-col p-3 border border-pink-100 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-colors text-left h-full"
+                                        >
+                                          <div className="relative w-full aspect-square mb-2">
+                                            <Image
+                                              src={product.image}
+                                              alt={product.name}
+                                              fill
+                                              className="object-cover rounded-lg"
+                                            />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <h4 className="font-medium text-[#6b4c3b] text-sm truncate">
+                                              {product.name}
+                                            </h4>
+                                            <div className="mt-1">
+                                              <p className="text-sm font-medium text-[#6b4c3b]">
+                                                R$ {product.price.toFixed(2)}
+                                              </p>
+                                              {product.product_quantity_rules && product.product_quantity_rules.length > 0 && (
+                                                <div className="text-xs text-pink-600 mt-1">
+                                                  {(() => {
+                                                    const minQty = getMinQty(product.product_quantity_rules);
+                                                    const extra = product.product_quantity_rules.find(r => r.extra_per_unit != null);
+                                                    if (extra) {
+                                                      return `+${extra.min_qty} itens: R$ ${Number(extra.extra_per_unit).toFixed(2)}`;
+                                                    }
+                                                    return `Mín: ${minQty}`;
+                                                  })()}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </button>
+                                      ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           ))}
-                        </select>
-                      </div>
-                      <div className="w-32">
-                        <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
-                          Quantidade
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={quantity}
-                          onChange={(e) => {
-                            const newQuantity = parseInt(e.target.value);
-                            if (newQuantity < 1) {
-                              toast.error("Quantidade mínima é 1 unidade");
-                              return;
-                            }
-                            const product = products.find(
-                              (p) => p.id === selectedProduct
-                            );
-                            if (product) {
-                              const validation = validateQuantity(
-                                newQuantity,
-                                1, // Default unit quantity for new items
-                                product.product_quantity_rules || []
-                              );
-                              if (!validation.isValid && validation.message) {
-                                toast.error(validation.message);
-                                return;
-                              }
-                            }
-                            setQuantity(newQuantity);
-                          }}
-                          className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Opção de Chocolate */}
-                    {selectedProduct && (
-                      <div className="flex items-center space-x-2">
-                        {products.find((p) => p.id === selectedProduct)
-                          ?.has_chocolate_option && (
-                          <label className="inline-flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={
-                                items[items.length - 1]?.has_chocolate || false
-                              }
-                              onChange={(e) => {
-                                const product = products.find(
-                                  (p) => p.id === selectedProduct
-                                );
-                                if (!product) return;
-
-                                const newItem = {
-                                  product_id: selectedProduct,
-                                  quantity,
-                                  unit_price: product.price,
-                                  has_chocolate: e.target.checked,
-                                  unit_quantity: product.unit_quantity,
-                                };
-
-                                setItems([...items.slice(0, -1), newItem]);
-                              }}
-                              className="form-checkbox h-4 w-4 text-[#6b4c3b] border-pink-200 rounded focus:ring-[#6b4c3b]"
-                            />
-                            <span className="ml-2 text-sm text-[#6b4c3b]">
-                              Com chocolate
-                            </span>
-                          </label>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleAddItem}
-                        className="px-4 py-2 bg-[#6b4c3b] text-white rounded-lg hover:bg-[#5a3d2e] focus:outline-none focus:ring-2 focus:ring-[#6b4c3b] focus:ring-offset-2"
-                      >
-                        Adicionar
-                      </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>
+
+                {/* Quick Add Modal */}
+                {quickAddProduct && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="relative w-16 h-16">
+                            <Image
+                              src={quickSelectedOptions[0]?.image || quickAddProduct.image}
+                              alt={quickAddProduct.name}
+                              fill
+                              className="object-cover rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-medium text-[#6b4c3b]">
+                              {quickAddProduct.name}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              Preço base: R$ {quickAddProduct.price.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setQuickAddProduct(null);
+                            setQuickSelectedOptions([]);
+                          }}
+                          className="text-gray-400 hover:text-gray-500"
+                        >
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {/* Opções do Produto */}
+                        {quickAddProduct.product_options && quickAddProduct.product_options.length > 0 && (
+                          <div className="bg-pink-50 rounded-lg p-3">
+                            <h4 className="text-sm font-medium text-[#6b4c3b] mb-2">Escolha o tipo:</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              {quickAddProduct.product_options.map((option) => (
+                                <button
+                                  key={option.id}
+                                  onClick={() => setQuickSelectedOptions([option])}
+                                  className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
+                                    quickSelectedOptions.some((o) => o.id === option.id)
+                                      ? 'border-pink-500 bg-pink-100'
+                                      : 'border-gray-200 hover:border-pink-200'
+                                  }`}
+                                >
+                                  <span className="text-sm">{option.name}</span>
+                                  {option.price_delta > 0 && (
+                                    <span className="text-xs text-pink-600 font-medium">
+                                      +R$ {option.price_delta.toFixed(2)}
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {quickAddProduct.product_quantity_rules && quickAddProduct.product_quantity_rules.length > 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-[#6b4c3b] mb-2">
+                              Quantidade de Itens
+                            </label>
+                            <div className="flex items-center space-x-3">
+                              <button
+                                onClick={() => {
+                                  const minQty = getMinQty(quickAddProduct.product_quantity_rules);
+                                  if (quickQuantity > minQty) {
+                                    setQuickQuantity(quickQuantity - 1);
+                                  }
+                                }}
+                                className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min={getMinQty(quickAddProduct.product_quantity_rules)}
+                                value={quickQuantity}
+                                onChange={(e) => {
+                                  const newQuantity = parseInt(e.target.value);
+                                  const minQty = getMinQty(quickAddProduct.product_quantity_rules);
+                                  
+                                  if (newQuantity < minQty) {
+                                    toast.error(`Quantidade mínima é ${minQty} item${minQty > 1 ? 's' : ''}`);
+                                    return;
+                                  }
+                                  
+                                  const validation = validateQuantity(
+                                    newQuantity,
+                                    quickUnitQuantity,
+                                    quickAddProduct.product_quantity_rules || []
+                                  );
+                                  if (!validation.isValid && validation.message) {
+                                    toast.error(validation.message);
+                                    return;
+                                  }
+                                  setQuickQuantity(newQuantity);
+                                }}
+                                className="w-20 px-3 py-2 text-center border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 text-lg"
+                              />
+                              <button
+                                onClick={() => {
+                                  const validation = validateQuantity(
+                                    quickQuantity + 1,
+                                    quickUnitQuantity,
+                                    quickAddProduct.product_quantity_rules || []
+                                  );
+                                  if (validation.isValid) {
+                                    setQuickQuantity(quickQuantity + 1);
+                                  } else if (validation.message) {
+                                    toast.error(validation.message);
+                                  }
+                                }}
+                                className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-sm font-medium text-[#6b4c3b] mb-2">
+                            Quantidade de Unidades
+                          </label>
+                          <div className="flex items-center space-x-3">
+                            <button
+                              onClick={() => {
+                                if (quickUnitQuantity > 1) {
+                                  setQuickUnitQuantity(quickUnitQuantity - 1);
+                                }
+                              }}
+                              className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={quickUnitQuantity}
+                              onChange={(e) => {
+                                const newUnitQuantity = parseInt(e.target.value);
+                                if (newUnitQuantity < 1) {
+                                  toast.error("Quantidade mínima é 1 unidade");
+                                  return;
+                                }
+                                const validation = validateQuantity(
+                                  quickQuantity,
+                                  newUnitQuantity,
+                                  quickAddProduct.product_quantity_rules || []
+                                );
+                                if (!validation.isValid && validation.message) {
+                                  toast.error(validation.message);
+                                  return;
+                                }
+                                setQuickUnitQuantity(newUnitQuantity);
+                              }}
+                              className="w-20 px-3 py-2 text-center border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 text-lg"
+                            />
+                            <button
+                              onClick={() => {
+                                const validation = validateQuantity(
+                                  quickQuantity,
+                                  quickUnitQuantity + 1,
+                                  quickAddProduct.product_quantity_rules || []
+                                );
+                                if (validation.isValid) {
+                                  setQuickUnitQuantity(quickUnitQuantity + 1);
+                                } else if (validation.message) {
+                                  toast.error(validation.message);
+                                }
+                              }}
+                              className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Preço */}
+                        <div className="border-t border-gray-200 pt-3 mt-3">
+                          <div className="flex justify-between text-sm">
+                            <span>Total:</span>
+                            <span className="font-medium text-primary-600">
+                              R$ {calculateTotalPrice({
+                                product_id: quickAddProduct.id,
+                                quantity: quickQuantity,
+                                unit_quantity: quickUnitQuantity,
+                                selected_options: quickSelectedOptions,
+                                unit_price: 0,
+                                has_chocolate: false
+                              }).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {quickAddProduct.has_chocolate_option && (
+                          <div className="flex items-center space-x-2">
+                            <label className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={items[items.length - 1]?.has_chocolate || false}
+                                onChange={(e) => {
+                                  const newItem = {
+                                    product_id: quickAddProduct.id,
+                                    quantity: quickQuantity,
+                                    unit_price: quickAddProduct.price,
+                                    has_chocolate: e.target.checked,
+                                    unit_quantity: quickUnitQuantity,
+                                    selected_options: quickSelectedOptions,
+                                  };
+                                  setItems([...items.slice(0, -1), newItem]);
+                                }}
+                                className="form-checkbox h-5 w-5 text-[#6b4c3b] border-pink-200 rounded focus:ring-[#6b4c3b]"
+                              />
+                              <span className="ml-2 text-base text-[#6b4c3b]">
+                                Com chocolate
+                              </span>
+                            </label>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end space-x-3">
+                          <button
+                            onClick={() => {
+                              setQuickAddProduct(null);
+                              setQuickSelectedOptions([]);
+                            }}
+                            className="px-4 py-2 text-[#6b4c3b] border border-[#6b4c3b] rounded-lg hover:bg-[#6b4c3b] hover:text-white focus:outline-none focus:ring-2 focus:ring-[#6b4c3b] focus:ring-offset-2"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={handleQuickAdd}
+                            className="px-4 py-2 bg-[#6b4c3b] text-white rounded-lg hover:bg-[#5a3d2e] focus:outline-none focus:ring-2 focus:ring-[#6b4c3b] focus:ring-offset-2"
+                          >
+                            Adicionar ao Pedido
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Lista de Itens */}
                 <div>
@@ -523,14 +853,6 @@ export default function CreateOrderModal({
                         (p) => p.id === item.product_id
                       );
                       if (!product) return null;
-
-                      const validation = validateQuantity(
-                        item.quantity,
-                        item.unit_quantity,
-                        product.product_quantity_rules || []
-                      );
-                      const unitPrice = validation.price || product.price;
-                      const totalPrice = item.quantity * unitPrice;
 
                       return (
                         <div
@@ -552,70 +874,74 @@ export default function CreateOrderModal({
                               <h4 className="font-medium text-[#6b4c3b]">
                                 {product.name}
                               </h4>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-gray-600">Itens:</span>
-                                  <button
-                                    onClick={() =>
-                                      handleQuantityChange(
-                                        index,
-                                        Math.max(1, item.quantity - 1)
-                                      )
-                                    }
-                                    className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="text-sm text-[#6b4c3b]">
-                                    {item.quantity}
-                                  </span>
-                                  <button
-                                    onClick={() =>
-                                      handleQuantityChange(
-                                        index,
-                                        item.quantity + 1
-                                      )
-                                    }
-                                    className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
-                                  >
-                                    +
-                                  </button>
+                              {product.product_quantity_rules && product.product_quantity_rules.length > 0 && (
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm text-gray-600">Quantidade de Unidades:</span>
+                                    <button
+                                      onClick={() =>
+                                        handleQuantityChange(
+                                          index,
+                                          Math.max(1, item.quantity - 1)
+                                        )
+                                      }
+                                      className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="text-sm text-[#6b4c3b]">
+                                      {item.quantity}
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        handleQuantityChange(
+                                          index,
+                                          item.quantity + 1
+                                        )
+                                      }
+                                      className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="flex items-center space-x-2 ml-4">
-                                  <span className="text-sm text-gray-600">Unidades:</span>
-                                  <button
-                                    onClick={() =>
-                                      handleUnitQuantityChange(
-                                        index,
-                                        Math.max(1, item.unit_quantity - 1)
-                                      )
-                                    }
-                                    className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="text-sm text-[#6b4c3b]">
-                                    {item.unit_quantity}
+                              )}
+                              <div className="flex items-center space-x-2 mt-1">
+                                <span className="text-sm text-gray-600">Quantidade de Items:</span>
+                                <button
+                                  onClick={() =>
+                                    handleUnitQuantityChange(
+                                      index,
+                                      Math.max(1, item.unit_quantity - 1)
+                                    )
+                                  }
+                                  className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                >
+                                  -
+                                </button>
+                                <span className="text-sm text-[#6b4c3b]">
+                                  {item.unit_quantity}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    handleUnitQuantityChange(
+                                      index,
+                                      item.unit_quantity + 1
+                                    )
+                                  }
+                                  className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <div className="border-t border-gray-200 pt-3 mt-3">
+                                <div className="flex justify-between text-sm">
+                                  <span>Total:</span>
+                                  <span className="font-medium text-primary-600">
+                                    R$ {calculateTotalPrice(item).toFixed(2)}
                                   </span>
-                                  <button
-                                    onClick={() =>
-                                      handleUnitQuantityChange(
-                                        index,
-                                        item.unit_quantity + 1
-                                      )
-                                    }
-                                    className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
-                                  >
-                                    +
-                                  </button>
                                 </div>
                               </div>
-                              <p className="text-sm text-[#6b4c3b]">
-                                Preço unitário: R$ {unitPrice.toFixed(2)}
-                              </p>
-                              <p className="text-sm font-medium text-[#6b4c3b]">
-                                Total: R$ {totalPrice.toFixed(2)}
-                              </p>
                               {product.has_chocolate_option && (
                                 <div className="mt-2">
                                   <label className="inline-flex items-center">
