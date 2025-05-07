@@ -69,7 +69,10 @@ const CartModal = ({
       ) || 0;
 
     // Se não tiver regras de quantidade, usa o preço unitário
-    if (!item.product_quantity_rules || item.product_quantity_rules.length === 0) {
+    if (
+      !item.product_quantity_rules ||
+      item.product_quantity_rules.length === 0
+    ) {
       return (item.price + optionsPrice) * item.unit_quantity;
     }
 
@@ -82,7 +85,7 @@ const CartModal = ({
 
     // Se a validação retornar um preço, usa ele
     if (validation.price !== undefined) {
-      return validation.price + (optionsPrice * item.quantity);
+      return validation.price + optionsPrice * item.quantity;
     }
 
     // Se não retornar preço, usa o preço unitário
@@ -194,12 +197,12 @@ const CartModal = ({
         `%0A%0ATotal: R$ ${total.toFixed(2)}`;
 
       const url = `https://wa.me/554198038007?text=${message}`;
-      //const win = window.open(url, "_blank", "noopener,noreferrer");
+      const win = window.open(url, "_blank", "noopener,noreferrer");
 
       // TODO: Tem um bug aqui, arrumar depois
-      //if (!win || win.closed || typeof win.closed === "undefined") {
-      //window.location.href = url;
-      //}
+      if (!win || win.closed || typeof win.closed === "undefined") {
+        window.location.href = url;
+      }
     } catch (error) {
       console.error("Erro ao criar pedido:", error);
       toast.error("Erro ao criar pedido. Tente novamente.");
@@ -253,9 +256,7 @@ const CartModal = ({
 
     // Atualiza o estado local
     setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, quantity } : item
-      )
+      prevItems.map((item) => (item.id === id ? { ...item, quantity } : item))
     );
 
     // Atualiza o carrinho global
@@ -401,46 +402,47 @@ const CartModal = ({
                               )}
                               <div className="flex items-center space-x-2 mt-2">
                                 <div className="flex flex-col space-y-2">
-                                  {item.product_quantity_rules && item.product_quantity_rules.length > 0 && (
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-xs text-gray-600">
-                                        Itens:
-                                      </span>
-                                      <button
-                                        onClick={() =>
-                                          handleQuantityChange(
-                                            item.id,
-                                            Math.max(0, item.quantity - 1)
-                                          )
-                                        }
-                                        disabled={(() => {
-                                          const validation = validateQuantity(
-                                            item.quantity - 1,
-                                            item.unit_quantity,
-                                            item.product_quantity_rules
-                                          );
-                                          return !validation.isValid;
-                                        })()}
-                                        className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                                      >
-                                        -
-                                      </button>
-                                      <span className="w-6 text-center text-sm">
-                                        {item.quantity}
-                                      </span>
-                                      <button
-                                        onClick={() =>
-                                          handleQuantityChange(
-                                            item.id,
-                                            item.quantity + 1
-                                          )
-                                        }
-                                        className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-sm"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-                                  )}
+                                  {item.product_quantity_rules &&
+                                    item.product_quantity_rules.length > 0 && (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-xs text-gray-600">
+                                          Itens:
+                                        </span>
+                                        <button
+                                          onClick={() =>
+                                            handleQuantityChange(
+                                              item.id,
+                                              Math.max(0, item.quantity - 1)
+                                            )
+                                          }
+                                          disabled={(() => {
+                                            const validation = validateQuantity(
+                                              item.quantity - 1,
+                                              item.unit_quantity,
+                                              item.product_quantity_rules
+                                            );
+                                            return !validation.isValid;
+                                          })()}
+                                          className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="w-6 text-center text-sm">
+                                          {item.quantity}
+                                        </span>
+                                        <button
+                                          onClick={() =>
+                                            handleQuantityChange(
+                                              item.id,
+                                              item.quantity + 1
+                                            )
+                                          }
+                                          className="w-6 h-6 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-sm"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    )}
                                   <div className="flex items-center space-x-2">
                                     <span className="text-xs text-gray-600">
                                       Unidades:
