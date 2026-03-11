@@ -7,6 +7,7 @@ import CartModal from "../components/CartModal";
 import Header from "../components/Header";
 import { motion } from "framer-motion";
 import { CartItem } from "@/types/cart";
+import { Product, ProductOption } from "@/types/database";
 import ProductList from "@/components/ProductList";
 import KitBuilder from "@/components/KitBuilder";
 
@@ -18,22 +19,35 @@ export default function Home() {
   const [isNewItem, setIsNewItem] = useState(false);
   const [activeCategory, setActiveCategory] = useState("pascoa");
 
-  const handleOrderClick = (product: {
-    id: string;
-    name: string;
-    price: number;
-    image: string;
-    has_chocolate_option: boolean;
+  const handleOrderClick = (product: Pick<Product, "id" | "name" | "price" | "image" | "has_chocolate_option" | "product_quantity_rules"> & {
     has_chocolate: boolean;
     quantity?: number;
     unit_quantity?: number;
+    selected_options?: ProductOption[];
   }) => {
+    const qty = product.quantity ?? 1;
+    const unitQty = product.unit_quantity ?? 1;
+    const optionsKey = (product.selected_options ?? [])
+      .map((o) => o.id)
+      .sort()
+      .join(",");
+    const itemId = `${product.id}_${unitQty}${product.has_chocolate ? "_choco" : ""}_${optionsKey}`;
+
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === product.id);
+      const existingItem = prevItems.find(
+        (item) =>
+          item.product_id === product.id &&
+          item.unit_quantity === unitQty &&
+          item.has_chocolate === product.has_chocolate &&
+          ((item.selected_options ?? []).map((o) => o.id).sort().join(",") === optionsKey)
+      );
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === product.id
-            ? { ...item, unit_quantity: item.unit_quantity + (product.unit_quantity || 1) }
+          item.product_id === product.id &&
+          item.unit_quantity === unitQty &&
+          item.has_chocolate === product.has_chocolate &&
+          ((item.selected_options ?? []).map((o) => o.id).sort().join(",") === optionsKey)
+            ? { ...item, quantity: item.quantity + qty }
             : item
         );
       }
@@ -41,11 +55,13 @@ export default function Home() {
         ...prevItems,
         {
           ...product,
-          quantity: product.quantity || 1,
-          unit_quantity: product.unit_quantity || 1,
+          id: itemId,
+          quantity: qty,
+          unit_quantity: unitQty,
           product_id: product.id,
           has_chocolate_option: product.has_chocolate_option,
           has_chocolate: product.has_chocolate,
+          selected_options: product.selected_options ?? [],
         },
       ];
     });

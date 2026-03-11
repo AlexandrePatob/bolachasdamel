@@ -5,7 +5,7 @@ import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { ShoppingBag, ShoppingCart, X, Trash2, MapPin, Truck, ArrowLeft } from "lucide-react";
 import { CartItem, clearCart, updateCartItemQuantity } from "@/lib/cart";
-import { validateQuantity } from "@/lib/quantityRules";
+import { validateQuantity, getFixedPackSizes } from "@/lib/quantityRules";
 import { ProductOption, ProductQuantityRule } from "@/types/database";
 
 interface CartModalProps {
@@ -85,7 +85,7 @@ const CartModal = ({
       !item.product_quantity_rules ||
       item.product_quantity_rules.length === 0
     ) {
-      return (item.price + optionsPrice) * item.unit_quantity;
+      return (item.price + optionsPrice) * item.quantity * item.unit_quantity;
     }
 
     const validation = validateQuantity(
@@ -119,9 +119,10 @@ const CartModal = ({
           : customerData.observations,
         delivery_date: customerData.delivery_date,
         items: items.map((item) => ({
-          product_id: item.id,
+          product_id: item.product_id,
           quantity: item.quantity,
           unit_quantity: item.unit_quantity,
+          unit_price: calculateTotalPrice(item) / item.quantity,
           has_chocolate: item.has_chocolate,
           selected_options: item.selected_options || [],
         })),
@@ -158,6 +159,22 @@ const CartModal = ({
       setStep("cart");
       onClose();
 
+      const formatCartItemForMessage = (
+        item: (typeof items)[0]
+      ) => {
+        const opts =
+          item.selected_options?.map((o) => o.name).join(", ") || "";
+        const chocolate =
+          item.has_chocolate_option
+            ? ` (${item.has_chocolate ? "Com chocolate" : "Sem chocolate"})`
+            : "";
+        const qtyInfo =
+          item.unit_quantity > 1
+            ? ` - ${item.quantity}x de ${item.unit_quantity}un`
+            : ` - ${item.quantity}x`;
+        return `${item.name}${opts ? ` (${opts})` : ""}${chocolate}${qtyInfo} - R$ ${calculateTotalPrice(item).toFixed(2)}`;
+      };
+
       const message =
         `Olá! Gostaria de fazer um pedido:%0A%0A` +
         `Nome: ${customerData.name}%0A` +
@@ -174,16 +191,7 @@ const CartModal = ({
             }%0A`
           : "") +
         `%0APedido:%0A` +
-        items
-          .map(
-            (item) =>
-              `${item.name}${
-                item.has_chocolate_option
-                  ? ` (${item.has_chocolate ? "Com chocolate" : "Sem chocolate"})`
-                  : ""
-              } - ${item.quantity}x - R$ ${calculateTotalPrice(item).toFixed(2)}`
-          )
-          .join("%0A") +
+        items.map(formatCartItemForMessage).join("%0A") +
         `%0A%0ATotal: R$ ${total.toFixed(2)}`;
 
       const url = `https://wa.me/554198038007?text=${message}`;
@@ -220,8 +228,9 @@ const CartModal = ({
     const validation = validateQuantity(quantity, item.unit_quantity, item.product_quantity_rules);
     if (!validation.isValid && validation.message) { toast.error(validation.message); return; }
     setItems((prevItems) =>
-      prevItems.map((item) => (item.id === id ? { ...item, quantity } : item))
+      prevItems.map((it) => (it.id === id ? { ...it, quantity } : it))
     );
+    onUpdateQuantity(id, quantity);
     updateCartItemQuantity(id, quantity, undefined, item.unit_quantity);
   };
 
@@ -320,9 +329,19 @@ const CartModal = ({
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-gray-800 text-sm leading-tight">
-                          {item.name}
-                        </h3>
+                        <div>
+                          <h3 className="font-bold text-gray-800 text-sm leading-tight">
+                            {item.name}
+                          </h3>
+                          {item.selected_options &&
+                            item.selected_options.length > 0 && (
+                              <p className="text-xs text-pink-600 mt-0.5">
+                                {item.selected_options
+                                  .map((o) => o.name)
+                                  .join(", ")}
+                              </p>
+                            )}
+                        </div>
                         <button
                           onClick={() => handleItemRemove(item.id)}
                           className="shrink-0 text-gray-300 hover:text-red-500 transition-colors"
@@ -367,7 +386,11 @@ const CartModal = ({
                         {item.product_quantity_rules &&
                           item.product_quantity_rules.length > 0 && (
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 w-14">Itens:</span>
+                              <span className="text-xs text-gray-500 w-14">
+                                {getFixedPackSizes(item.product_quantity_rules).length > 0
+                                  ? "Pacotes:"
+                                  : "Itens:"}
+                              </span>
                               <QuantityButton
                                 onClick={() => handleQuantityChange(item.id, Math.max(0, item.quantity - 1))}
                                 disabled={(() => {
@@ -392,31 +415,38 @@ const CartModal = ({
                               </QuantityButton>
                             </div>
                           )}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-14">Unidades:</span>
-                          <QuantityButton
-                            onClick={() => handleUnitQuantityChange(item.id, Math.max(1, item.unit_quantity - 1))}
-                            disabled={(() => {
-                              const v = validateQuantity(item.quantity, item.unit_quantity - 1, item.product_quantity_rules);
-                              return !v.isValid;
-                            })()}
-                          >
-                            −
-                          </QuantityButton>
-                          <span className="w-6 text-center text-sm font-medium">{item.unit_quantity}</span>
-                          <QuantityButton
-                            onClick={() => handleUnitQuantityChange(item.id, item.unit_quantity + 1)}
-                            disabled={
-                              !validateQuantity(
-                                item.quantity,
-                                item.unit_quantity + 1,
-                                item.product_quantity_rules
-                              ).isValid
-                            }
-                          >
-                            +
-                          </QuantityButton>
-                        </div>
+                        {getFixedPackSizes(item.product_quantity_rules ?? []).length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 w-14">Pacote:</span>
+                            <span className="text-sm font-medium">{item.unit_quantity} un</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 w-14">Unidades:</span>
+                            <QuantityButton
+                              onClick={() => handleUnitQuantityChange(item.id, Math.max(1, item.unit_quantity - 1))}
+                              disabled={(() => {
+                                const v = validateQuantity(item.quantity, item.unit_quantity - 1, item.product_quantity_rules);
+                                return !v.isValid;
+                              })()}
+                            >
+                              −
+                            </QuantityButton>
+                            <span className="w-6 text-center text-sm font-medium">{item.unit_quantity}</span>
+                            <QuantityButton
+                              onClick={() => handleUnitQuantityChange(item.id, item.unit_quantity + 1)}
+                              disabled={
+                                !validateQuantity(
+                                  item.quantity,
+                                  item.unit_quantity + 1,
+                                  item.product_quantity_rules
+                                ).isValid
+                              }
+                            >
+                              +
+                            </QuantityButton>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

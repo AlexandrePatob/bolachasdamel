@@ -196,13 +196,16 @@ export async function createOrderWithCustomer(orderData: {
 
   if (orderError) throw orderError;
 
-  // Criar itens do pedido
+  // Criar itens do pedido (unit_price vem do client quando calculado por regras)
   const orderItems = orderData.items.map((item) => ({
     order_id: order.id,
     product_id: item.product_id,
     quantity: item.quantity,
     unit_quantity: item.unit_quantity,
-    unit_price: products.find((p) => p.id === item.product_id)?.price || 0,
+    unit_price:
+      (item as { unit_price?: number }).unit_price ??
+      products.find((p) => p.id === item.product_id)?.price ??
+      0,
     has_chocolate: item.has_chocolate,
   }));
 

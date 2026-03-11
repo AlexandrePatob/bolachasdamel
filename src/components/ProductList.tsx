@@ -7,7 +7,7 @@ import { ShoppingCart, Settings2, ChevronRight } from "lucide-react";
 import { Product, ProductOption } from "@/types/database";
 import ChocolateOptionModal from "./ChocolateOptionModal";
 import ProductDetailsModal from "./ProductDetailsModal";
-import { validateQuantity } from "@/lib/quantityRules";
+import { validateQuantity, getFixedPackSizes } from "@/lib/quantityRules";
 
 interface ProductListProps {
   category: string;
@@ -68,14 +68,27 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
     }
   };
 
-  const getMinQty = (rules?: Product['product_quantity_rules']) => {
+  const getMinQty = (rules?: Product["product_quantity_rules"]) => {
     if (!rules || rules.length === 0) return 1;
-    return Math.min(...rules.map(r => r.min_qty));
+    const packSizes = getFixedPackSizes(rules);
+    return packSizes.length > 0 ? 1 : Math.min(...rules.map((r) => r.min_qty));
   };
 
-  const getMinPrice = (rules?: Product['product_quantity_rules']) => {
+  const getInitialUnitQty = (product: Product) => {
+    const packSizes = getFixedPackSizes(product.product_quantity_rules);
+    return packSizes[0] ?? product.unit_quantity ?? 1;
+  };
+
+  const getMinPrice = (rules?: Product["product_quantity_rules"]) => {
     if (!rules || rules.length === 0) return null;
-    const prices = rules.map(r => r.price_per_unit ?? 0).filter(p => p > 0);
+    const packSizes = getFixedPackSizes(rules);
+    if (packSizes.length > 0) {
+      const prices = rules
+        .filter((r) => r.min_qty === r.max_qty && r.price != null)
+        .map((r) => Number(r.price));
+      return prices.length > 0 ? Math.min(...prices) : null;
+    }
+    const prices = rules.map((r) => (r as { price_per_unit?: number }).price_per_unit ?? 0).filter((p) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : null;
   };
 
@@ -101,8 +114,14 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
 
   const handleAddToCart = useCallback(
     (product: Product) => {
+      if (product.product_options && product.product_options.length > 0 && !product.has_chocolate_option) {
+        setSelectedProduct(product);
+        setShowDetailsModal(true);
+        return;
+      }
       const minQty = getMinQty(product.product_quantity_rules);
-      const validation = validateQuantity(minQty, product.unit_quantity, product.product_quantity_rules);
+      const unitQty = getInitialUnitQty(product);
+      const validation = validateQuantity(minQty, unitQty, product.product_quantity_rules);
       if (!validation.isValid && validation.message) {
         toast.error(validation.message);
         return;
@@ -112,17 +131,18 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
         setSelectedProduct(product);
         setShowChocolateModal(true);
       } else {
+        const unitPrice = validation.price ? validation.price / minQty : product.price;
         onOrderClick({
           ...product,
           id: product.id,
           product_id: product.id,
           name: product.name,
-          price: validation.price || product.price,
+          price: unitPrice,
           image: product.image || "",
           has_chocolate_option: product.has_chocolate_option,
           has_chocolate: false,
           quantity: minQty,
-          unit_quantity: product.unit_quantity,
+          unit_quantity: unitQty,
         });
         toast.success(`${product.name} adicionado ao ${isKitBuilder ? "kit" : "carrinho"}!`, {
           duration: 2000,
@@ -146,22 +166,25 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
     (hasChocolate: boolean) => {
       if (!selectedProduct) return;
       const minQty = getMinQty(selectedProduct.product_quantity_rules);
-      const validation = validateQuantity(minQty, selectedProduct.unit_quantity, selectedProduct.product_quantity_rules);
+      const unitQty = getInitialUnitQty(selectedProduct);
+      const validation = validateQuantity(minQty, unitQty, selectedProduct.product_quantity_rules);
       if (!validation.isValid && validation.message) {
         toast.error(validation.message);
         return;
       }
 
+      const unitPrice = validation.price ? validation.price / minQty : selectedProduct.price;
       onOrderClick({
         ...selectedProduct,
         id: selectedProduct.id,
         product_id: selectedProduct.id,
         name: selectedProduct.name,
-        price: validation.price || selectedProduct.price,
+        price: unitPrice,
         image: selectedProduct.image || "",
         has_chocolate_option: true,
         has_chocolate: hasChocolate,
         quantity: minQty,
+        unit_quantity: unitQty,
       });
 
       toast.success(`${selectedProduct.name} adicionado ao ${isKitBuilder ? "kit" : "carrinho"}!`, {
@@ -181,6 +204,7 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
 
   const hasOptions = (product: Product) =>
     product.has_chocolate_option ||
+    (product.product_options && product.product_options.length > 0) ||
     (product.product_quantity_rules && product.product_quantity_rules.length > 0);
 
   if (loading) {

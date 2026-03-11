@@ -6,6 +6,25 @@ export interface QuantityValidationResult {
   price?: number;
 }
 
+/**
+ * Verifica se as regras definem pacotes fechados (só min=max, sem extra_per_unit).
+ * Para pacotes fechados: min_qty/max_qty = unidades por pacote; price = preço por pacote.
+ * Ex.: Quadradinho 6 un = R$ 13,90; 12 un = R$ 27,90.
+ */
+function isFixedPackRules(rules: ProductQuantityRule[]): boolean {
+  return (
+    rules.length > 0 &&
+    rules.every(
+      (r) =>
+        r.min_qty != null &&
+        r.max_qty != null &&
+        r.min_qty === r.max_qty &&
+        r.price != null &&
+        r.extra_per_unit == null
+    )
+  );
+}
+
 export function validateQuantity(
   quantity: number,
   unitQuantity: number,
@@ -16,17 +35,36 @@ export function validateQuantity(
   }
 
   if (quantity <= 0) {
-    return { isValid: false, message: "Quantidade de unidades deve ser maior que zero" };
+    return { isValid: false, message: "Quantidade deve ser maior que zero" };
   }
 
   if (unitQuantity <= 0) {
-    return { isValid: false, message: "Quantidade de itens deve ser maior que zero" };
+    return { isValid: false, message: "Quantidade de unidades deve ser maior que zero" };
   }
 
-  // Ordena as regras por min_qty
   const sorted = [...rules].sort((a, b) => a.min_qty - b.min_qty);
 
-  // 1. Procura faixa fixa exata
+  // PACOTES FECHADOS: min_qty = unidades por pacote, price = preço por pacote
+  // quantity = nº de pacotes, unitQuantity = unidades por pacote
+  // Ex.: 2 pacotes de 6 un → quantity=2, unitQuantity=6 → total = 13,90 * 2 = 27,80
+  if (isFixedPackRules(rules)) {
+    const packRule = sorted.find(
+      (r) => r.min_qty === unitQuantity && r.price != null
+    );
+    if (packRule) {
+      return {
+        isValid: true,
+        price: Number(packRule.price) * quantity,
+      };
+    }
+    const validPacks = sorted.map((r) => r.min_qty).join(", ");
+    return {
+      isValid: false,
+      message: `Escolha um pacote de ${validPacks} unidades`,
+    };
+  }
+
+  // REGRAS POR QUANTIDADE (comportamento original): min/max = quantidade total
   const fixedRule = sorted.find(
     (rule) =>
       rule.price != null &&
@@ -69,4 +107,14 @@ export function validateQuantity(
     isValid: false,
     message: `Quantidade mínima é ${sorted[0].min_qty} unidades por item`,
   };
+}
+
+/**
+ * Retorna os tamanhos de pacote válidos para produtos com pacotes fechados.
+ * Usado no front para listar opções (6 un, 12 un etc).
+ */
+export function getFixedPackSizes(rules?: ProductQuantityRule[]): number[] {
+  if (!rules || rules.length === 0) return [];
+  if (!isFixedPackRules(rules)) return [];
+  return [...rules].sort((a, b) => a.min_qty - b.min_qty).map((r) => r.min_qty);
 } 

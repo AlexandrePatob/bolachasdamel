@@ -24,6 +24,10 @@ Execute o arquivo `pascoa-2026-migration.sql` no **Supabase SQL Editor**:
 4. Cole o conteúdo de `pascoa-2026-migration.sql`
 5. Clique em **Run**
 
+### Ajuste Quadradinho (pacotes fechados)
+
+Execute `fix-pascoa-products.sql` no Supabase SQL Editor para remover as opções de design do Quadradinho. Os pacotes 6 un e 12 un são definidos pelas `product_quantity_rules` e selecionados no modal de detalhes.
+
 ### Imagens
 
 Após rodar a migration, adicione as fotos dos produtos em:

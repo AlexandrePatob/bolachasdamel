@@ -46,7 +46,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (statusFilter === "all") {
-      console.log("orders", orders);
       setFilteredOrders(orders);
     } else {
       setFilteredOrders(
@@ -985,13 +984,13 @@ export default function AdminDashboard() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {order.items.map((item) => (
                       <div key={item.id}>
-                        {item.quantity}x {item.product?.name}
-                        {item.has_chocolate && " (Com chocolate)"}
+                        {item.quantity}x
+                        {item.unit_quantity && item.unit_quantity > 1 ? ` de ${item.unit_quantity}un` : ""}{" "}
+                        {item.product?.name}
                         {item.options && item.options.length > 0 && (
-                          <div className="ml-4 text-xs text-gray-600">
-                            Opções: {item.options.map(opt => opt.option.name).join(", ")}
-                          </div>
+                          <> ({item.options.map(opt => opt.option.name).join(", ")})</>
                         )}
+                        {item.has_chocolate && " (Com chocolate)"}
                       </div>
                     ))}
                   </td>
@@ -1151,13 +1150,13 @@ export default function AdminDashboard() {
                 <div className="space-y-1">
                   {order.items.map((item) => (
                     <div key={item.id} className="text-sm text-gray-500">
-                      {item.quantity}x {item.product?.name}
-                      {item.has_chocolate && " (Com chocolate)"}
+                      {item.quantity}x
+                      {item.unit_quantity && item.unit_quantity > 1 ? ` de ${item.unit_quantity}un` : ""}{" "}
+                      {item.product?.name}
                       {item.options && item.options.length > 0 && (
-                        <div className="ml-4 text-xs text-gray-600">
-                          Opções: {item.options.map(opt => opt.option.name).join(", ")}
-                        </div>
+                        <> ({item.options.map(opt => opt.option.name).join(", ")})</>
                       )}
+                      {item.has_chocolate && " (Com chocolate)"}
                     </div>
                   ))}
                 </div>

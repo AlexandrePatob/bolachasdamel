@@ -22,6 +22,7 @@ interface OrderItem {
   unit_price: number;
   has_chocolate: boolean;
   selected_options?: ProductOption[];
+  options?: { option: ProductOption }[];
   product: {
     id: string;
     name: string;
@@ -109,25 +110,29 @@ export default function OrderDetailsModal({
     const product = products.find((p) => p.id === item.product_id);
     if (!product) return 0;
 
-    const optionsPrice = item.selected_options?.reduce(
-      (sum, option) => sum + option.price_delta,
+    const opts =
+      item.selected_options ??
+      item.options?.map((o: { option: { price_delta?: number } }) => ({
+        price_delta: o.option?.price_delta ?? 0,
+      })) ??
+      [];
+    const optionsPrice = opts.reduce(
+      (sum: number, option: { price_delta?: number }) =>
+        sum + (option.price_delta ?? 0),
       0
-    ) || 0;
+    );
 
     const validation = validateQuantity(
       item.quantity,
       item.unit_quantity,
       product.product_quantity_rules || []
     );
-    const basePrice = validation.price || product.price;
+    const baseTotal = validation.price ?? product.price * item.quantity * item.unit_quantity;
 
-    if (optionsPrice > 0 && !validation.price) {
-      return optionsPrice * item.unit_quantity;
+    if (validation.price) {
+      return baseTotal + optionsPrice * item.quantity;
     }
-
-    return validation.price
-      ? basePrice + optionsPrice * item.unit_quantity
-      : basePrice * item.unit_quantity;
+    return (product.price + optionsPrice) * item.quantity * item.unit_quantity;
   };
 
   return (

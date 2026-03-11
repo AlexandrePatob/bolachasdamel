@@ -1,4 +1,4 @@
-import { ProductQuantityRule } from "./database";
+import { ProductQuantityRule, ProductOption } from "./database";
 
 export interface CartItem {
   id: string;
@@ -11,4 +11,5 @@ export interface CartItem {
   quantity: number;
   unit_quantity: number;
   product_quantity_rules?: ProductQuantityRule[];
+  selected_options?: ProductOption[];
 }
