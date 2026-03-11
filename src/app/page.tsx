@@ -1,21 +1,15 @@
 "use client";
 import React, { useState } from "react";
-import Hero from "../components/Hero";
 import AboutUs from "../components/AboutUs";
-import EasterFavorites from "../components/FeaturedProducts";
-import FeaturedSection from "../components/FeaturedSection";
 import Footer from "../components/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
-import Navigation from "../components/Navigation";
 import CartModal from "../components/CartModal";
-import CartIcon from "../components/CartIcon";
+import Header from "../components/Header";
 import { motion } from "framer-motion";
 import { CartItem } from "@/types/cart";
+import { Product, ProductOption } from "@/types/database";
 import ProductList from "@/components/ProductList";
 import KitBuilder from "@/components/KitBuilder";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -23,24 +17,37 @@ export default function Home() {
   const [isKitBuilder, setIsKitBuilder] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isNewItem, setIsNewItem] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("maes");
+  const [activeCategory, setActiveCategory] = useState("pascoa");
 
-  const handleOrderClick = (product: {
-    id: string;
-    name: string;
-    price: number;
-    image: string;
-    has_chocolate_option: boolean;
+  const handleOrderClick = (product: Pick<Product, "id" | "name" | "price" | "image" | "has_chocolate_option" | "product_quantity_rules"> & {
     has_chocolate: boolean;
     quantity?: number;
     unit_quantity?: number;
+    selected_options?: ProductOption[];
   }) => {
+    const qty = product.quantity ?? 1;
+    const unitQty = product.unit_quantity ?? 1;
+    const optionsKey = (product.selected_options ?? [])
+      .map((o) => o.id)
+      .sort()
+      .join(",");
+    const itemId = `${product.id}_${unitQty}${product.has_chocolate ? "_choco" : ""}_${optionsKey}`;
+
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === product.id);
+      const existingItem = prevItems.find(
+        (item) =>
+          item.product_id === product.id &&
+          item.unit_quantity === unitQty &&
+          item.has_chocolate === product.has_chocolate &&
+          ((item.selected_options ?? []).map((o) => o.id).sort().join(",") === optionsKey)
+      );
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === product.id
-            ? { ...item, unit_quantity: item.unit_quantity + (product.unit_quantity || 1) }
+          item.product_id === product.id &&
+          item.unit_quantity === unitQty &&
+          item.has_chocolate === product.has_chocolate &&
+          ((item.selected_options ?? []).map((o) => o.id).sort().join(",") === optionsKey)
+            ? { ...item, quantity: item.quantity + qty }
             : item
         );
       }
@@ -48,11 +55,13 @@ export default function Home() {
         ...prevItems,
         {
           ...product,
-          quantity: product.quantity || 1,
-          unit_quantity: product.unit_quantity || 1,
+          id: itemId,
+          quantity: qty,
+          unit_quantity: unitQty,
           product_id: product.id,
           has_chocolate_option: product.has_chocolate_option,
           has_chocolate: product.has_chocolate,
+          selected_options: product.selected_options ?? [],
         },
       ];
     });
@@ -89,124 +98,65 @@ export default function Home() {
     setCartItems([]);
   };
 
-  const otherCategories = [
-    { id: "fe", label: "Fé" },
-    { id: "pascoa", label: "Páscoa" },
-    { id: "outros", label: "Outros" },
-  ];
-
-  const tabs = [
-    {
-      id: "maes",
-      label: "Dia das Mães",
-    },
-    {
-      id: "sobre",
-      label: "Quem Somos",
-      content: <AboutUs />,
-    },
-  ];
-
   const handleCategoryChange = (categoryId: string) => {
     setActiveCategory(categoryId);
   };
 
   return (
     <>
+      <Header
+        cartItemCount={cartItems.length}
+        isNewItem={isNewItem}
+        onCartClick={() => setIsCartOpen(true)}
+        activeCategory={activeCategory}
+        onCategoryChange={handleCategoryChange}
+      />
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen bg-gradient-to-b from-[#ffe9f3] to-white"
+        className="min-h-screen bg-gradient-to-b from-[#ffe9f3] to-white pt-[195px]"
       >
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          className="container mx-auto px-4 py-10 md:py-14"
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <Hero />
-        </motion.div>
-        <motion.div
-          className="container mx-auto px-4 py-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <Navigation
-            tabs={tabs}
-            otherCategories={otherCategories}
-            onCategoryChange={handleCategoryChange}
-          />
+          {activeCategory === "sobre" && <AboutUs />}
           {activeCategory === "maes" && (
-            <div className="mt-8">
-              <motion.button
-                onClick={() => setIsKitBuilderOpen(true)}
-                className="relative w-full max-w-md mx-auto block bg-gradient-to-r from-pink-500 to-pink-600 text-white py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 mb-12 overflow-hidden"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <motion.div
-                  className="absolute inset-0 border-2 border-pink-300 rounded-lg"
-                  animate={{
-                    opacity: [1, 0.2, 1],
-                    boxShadow: [
-                      "0 0 0 0 rgba(244, 114, 182, 0.8)",
-                      "0 0 0 4px rgba(244, 114, 182, 0.2)",
-                      "0 0 0 0 rgba(244, 114, 182, 0.8)"
-                    ]
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
-                <div className="relative z-10">
-                  <h3 className="text-2xl font-bold mb-2">
-                    🎁 Monte seu Kit Exclusivo
-                  </h3>
-                  <p className="text-sm opacity-90">
-                    Clique e crie um kit personalizado com os melhores produtos
-                  </p>
-                </div>
-              </motion.button>
-              <ProductList
-                category={activeCategory}
-                onOrderClick={handleOrderClick}
-              />
+            <div className="space-y-10">
+              <div className="text-center">
+                <button
+                  onClick={() => setIsKitBuilderOpen(true)}
+                  className="inline-flex flex-col items-center gap-1 bg-pink-600 hover:bg-pink-700 text-white py-4 px-8 rounded-xl transition-colors duration-200"
+                >
+                  <span className="font-semibold text-lg">Monte seu Kit Exclusivo</span>
+                  <span className="text-sm text-pink-100">
+                    Crie um kit personalizado com os melhores produtos
+                  </span>
+                </button>
+              </div>
+              <ProductList category={activeCategory} onOrderClick={handleOrderClick} />
             </div>
           )}
           {activeCategory !== "sobre" && activeCategory !== "maes" && (
-            <ProductList
-              category={activeCategory}
-              onOrderClick={handleOrderClick}
-            />
+            <ProductList category={activeCategory} onOrderClick={handleOrderClick} />
           )}
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
         >
           <Footer />
         </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
         >
           <WhatsAppButton />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
-        >
-          <CartIcon
-            itemCount={cartItems.length}
-            onClick={() => setIsCartOpen(true)}
-            isNewItem={isNewItem}
-          />
         </motion.div>
         <CartModal
           isOpen={isCartOpen}

@@ -5,19 +5,19 @@ import { motion } from 'framer-motion';
 
 const AboutUs = () => {
   return (
-    <section className="w-full py-16 bg-gradient-to-b from-pink-50 to-white">
+    <section className="w-full py-12 md:py-16">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl font-bold text-center text-pink-600 mb-4">
+        <h2 className="text-3xl md:text-4xl font-bold text-center text-pink-600 mb-10">
           Quem Somos
         </h2>
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
-              className="relative w-full h-[400px] rounded-2xl overflow-hidden shadow-lg"
+              className="relative w-full h-[320px] md:h-[400px] rounded-xl overflow-hidden shadow-md"
             >
               <Image
                 src="/images/system/about-us.png"
@@ -31,9 +31,9 @@ const AboutUs = () => {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
-              className="space-y-6 text-gray-700"
+              className="space-y-5 text-gray-700 leading-relaxed"
             >
-              <p className="text-xl font-medium text-pink-600 md:whitespace-nowrap">
+              <p className="text-lg font-medium text-pink-600 md:whitespace-nowrap">
                 🌸✨ Nasce uma menina, renasce uma mãe. ✨🌸
               </p>
               <p>
@@ -50,9 +50,9 @@ const AboutUs = () => {
               </p>
               <p className="text-right font-medium">
                 Com amor,<br />
-                <a 
-                  href="https://instagram.com/bolachasdamel_" 
-                  target="_blank" 
+                <a
+                  href="https://instagram.com/bolachasdamel_"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 hover:text-pink-600 transition-colors"
                 >

@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
 
 function LoginForm() {
   const [email, setEmail] = useState("");

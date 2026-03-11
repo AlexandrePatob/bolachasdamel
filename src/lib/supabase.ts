@@ -23,6 +23,7 @@ export async function getProducts(category?: string) {
             image,
             has_chocolate_option,
             category,
+            unit_quantity,
             product_options (
               id,
               type,
@@ -45,7 +46,18 @@ export async function getProducts(category?: string) {
     query.eq("category", category);
   }
 
-  const { data, error } = await query.order("created_at", { ascending: true });
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+// Categories
+export async function getCategories() {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, label, sort_order, is_featured")
+    .order("sort_order", { ascending: true });
 
   if (error) throw error;
   return data;
@@ -65,8 +77,9 @@ export async function getFavorites() {
         `
     )
     .eq("is_available", true)
-    .in("name", ["Só um mimo", "Feliz Páscoa"])
-    .order("created_at", { ascending: true });
+    .eq("category", "pascoa")
+    .order("created_at", { ascending: false })
+    .limit(6);
 
   if (error) throw error;
   return data;
@@ -77,7 +90,6 @@ export async function createCustomer(customer: {
   name: string;
   email: string;
   phone: string;
-  address: string;
 }) {
   const { data, error } = await supabase
     .from("customers")
@@ -94,8 +106,6 @@ export async function createOrderWithCustomer(orderData: {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  customer_address: string;
-  complement?: string;
   items: {
     product_id: string;
     quantity: number;
@@ -112,7 +122,6 @@ export async function createOrderWithCustomer(orderData: {
     !orderData.customer_name ||
     !orderData.customer_email ||
     !orderData.customer_phone ||
-    !orderData.customer_address ||
     !orderData.items ||
     orderData.items.length === 0 ||
     !orderData.delivery_date
@@ -142,8 +151,6 @@ export async function createOrderWithCustomer(orderData: {
         name: orderData.customer_name,
         email: orderData.customer_email,
         phone: orderData.customer_phone,
-        address: orderData.customer_address,
-        complement: orderData.complement || null,
       })
       .select()
       .single();
@@ -157,8 +164,6 @@ export async function createOrderWithCustomer(orderData: {
       .update({
         name: orderData.customer_name,
         phone: orderData.customer_phone,
-        address: orderData.customer_address,
-        complement: orderData.complement || null,
       })
       .eq("id", existingCustomer.id);
 
@@ -176,13 +181,12 @@ export async function createOrderWithCustomer(orderData: {
 
   if (productsError) throw productsError;
 
-  // Criar pedido
+  // Criar pedido (endereço removido - entrega combinada via WhatsApp)
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
       customer_id: existingCustomer.id,
       total_amount: orderData.total_amount,
-      delivery_address: orderData.customer_address,
       observations: orderData.observations || null,
       delivery_date: orderData.delivery_date,
       status: "pending",
@@ -192,13 +196,16 @@ export async function createOrderWithCustomer(orderData: {
 
   if (orderError) throw orderError;
 
-  // Criar itens do pedido
+  // Criar itens do pedido (unit_price vem do client quando calculado por regras)
   const orderItems = orderData.items.map((item) => ({
     order_id: order.id,
     product_id: item.product_id,
     quantity: item.quantity,
     unit_quantity: item.unit_quantity,
-    unit_price: products.find((p) => p.id === item.product_id)?.price || 0,
+    unit_price:
+      (item as { unit_price?: number }).unit_price ??
+      products.find((p) => p.id === item.product_id)?.price ??
+      0,
     has_chocolate: item.has_chocolate,
   }));
 
@@ -266,20 +273,44 @@ export async function getOrder(id: string) {
   return data as OrderWithItems;
 }
 
-// Admin
-export async function getAdminStats() {
-  const { data: orders, error: ordersError } = await supabase
-    .from("orders")
-    .select("*");
+// Admin - date range helpers
+function getDateRangeFromDays(days: number) {
+  const today = new Date();
+  const from = new Date(today);
+  from.setDate(from.getDate() - days);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(today);
+  to.setHours(23, 59, 59, 999);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+export async function getAdminStats(
+  from?: string,
+  to?: string,
+  options?: { all?: boolean; days?: number }
+) {
+  let query = supabase.from("orders").select("*");
+
+  if (options?.all) {
+    // No date filter
+  } else if (from && to) {
+    query = query.gte("created_at", from).lte("created_at", to);
+  } else {
+    const days = options?.days ?? 15;
+    const range = getDateRangeFromDays(days);
+    query = query.gte("created_at", range.from).lte("created_at", range.to);
+  }
+
+  const { data: orders, error: ordersError } = await query;
 
   if (ordersError) throw ordersError;
 
-  const total_orders = orders.length;
-  const total_revenue = orders.reduce(
+  const total_orders = orders?.length ?? 0;
+  const total_revenue = (orders ?? []).reduce(
     (sum, order) => sum + order.total_amount,
     0
   );
-  const orders_by_status = orders.reduce((acc, order) => {
+  const orders_by_status = (orders ?? []).reduce((acc, order) => {
     acc[order.status] = (acc[order.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -357,8 +388,12 @@ export async function updateOrderShippingFee(id: string, shipping_fee: number) {
   return updatedOrder;
 }
 
-export async function getAdminOrders() {
-  const { data, error } = await supabase
+export async function getAdminOrders(
+  from?: string,
+  to?: string,
+  options?: { all?: boolean; days?: number }
+) {
+  let query = supabase
     .from("orders")
     .select(
       `
@@ -374,6 +409,18 @@ export async function getAdminOrders() {
     `
     )
     .order("created_at", { ascending: false });
+
+  if (options?.all) {
+    // No date filter
+  } else if (from && to) {
+    query = query.gte("created_at", from).lte("created_at", to);
+  } else {
+    const days = options?.days ?? 15;
+    const range = getDateRangeFromDays(days);
+    query = query.gte("created_at", range.from).lte("created_at", range.to);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return data;

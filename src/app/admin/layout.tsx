@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import Image from 'next/image';
+import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function AdminLayout({
   children,
@@ -9,12 +10,16 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSignOut = () => {
-    // Limpa o cookie de autenticação
-    document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    router.push('/admin/login');
+    document.cookie =
+      "admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    router.push("/admin/login");
   };
+
+  const isActive = (path: string) => pathname === path;
+  const isLoginPage = pathname === "/admin/login";
 
   return (
     <div className="min-h-[75vh] bg-gradient-to-b from-[#ffe9f3] to-white">
@@ -22,7 +27,7 @@ export default function AdminLayout({
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-5">
-              <div className="relative w-12 h-12">
+              <div className="relative w-12 h-12 shrink-0">
                 <Image
                   src="/images/system/logo.png"
                   alt="Bolachas da Mel"
@@ -30,7 +35,33 @@ export default function AdminLayout({
                   className="object-contain rounded-full"
                 />
               </div>
-              <h1 className="text-xl font-bold text-[#6b4c3b]">Painel Administrativo</h1>
+              <h1 className="text-xl font-bold text-[#6b4c3b]">
+                Painel Administrativo
+              </h1>
+              {!isLoginPage && (
+                <div className="flex gap-2 ml-4">
+                  <Link
+                    href="/admin/dashboard"
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive("/admin/dashboard")
+                        ? "bg-[#6b4c3b] text-white"
+                        : "text-[#6b4c3b] hover:bg-pink-100"
+                    }`}
+                  >
+                    Torre
+                  </Link>
+                  <Link
+                    href="/admin/history"
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive("/admin/history")
+                        ? "bg-[#6b4c3b] text-white"
+                        : "text-[#6b4c3b] hover:bg-pink-100"
+                    }`}
+                  >
+                    Histórico
+                  </Link>
+                </div>
+              )}
             </div>
             <button
               onClick={handleSignOut}

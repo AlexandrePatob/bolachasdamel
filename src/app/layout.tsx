@@ -1,16 +1,22 @@
 import React from 'react';
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Cormorant_Garamond } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({ subsets: ['latin'] });
+const cormorant = Cormorant_Garamond({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-cormorant',
+});
 
 export const metadata: Metadata = {
   title: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
   description: 'As melhores bolachas artesanais feitas com amor e carinho.',
+  icons: { icon: '/favicon.ico' },
   openGraph: {
     title: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
     description: 'As melhores bolachas artesanais feitas com amor e carinho.',
@@ -34,7 +40,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
+      <body className={`${inter.className} ${cormorant.variable}`}>
         {children}
         <Analytics />
         <SpeedInsights />

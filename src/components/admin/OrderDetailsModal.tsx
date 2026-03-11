@@ -22,6 +22,7 @@ interface OrderItem {
   unit_price: number;
   has_chocolate: boolean;
   selected_options?: ProductOption[];
+  options?: { option: ProductOption }[];
   product: {
     id: string;
     name: string;
@@ -109,38 +110,42 @@ export default function OrderDetailsModal({
     const product = products.find((p) => p.id === item.product_id);
     if (!product) return 0;
 
-    const optionsPrice = item.selected_options?.reduce(
-      (sum, option) => sum + option.price_delta,
+    const opts =
+      item.selected_options ??
+      item.options?.map((o: { option: { price_delta?: number } }) => ({
+        price_delta: o.option?.price_delta ?? 0,
+      })) ??
+      [];
+    const optionsPrice = opts.reduce(
+      (sum: number, option: { price_delta?: number }) =>
+        sum + (option.price_delta ?? 0),
       0
-    ) || 0;
+    );
 
     const validation = validateQuantity(
       item.quantity,
       item.unit_quantity,
       product.product_quantity_rules || []
     );
-    const basePrice = validation.price || product.price;
+    const baseTotal = validation.price ?? product.price * item.quantity * item.unit_quantity;
 
-    if (optionsPrice > 0 && !validation.price) {
-      return optionsPrice * item.unit_quantity;
+    if (validation.price) {
+      return baseTotal + optionsPrice * item.quantity;
     }
-
-    return validation.price
-      ? basePrice + optionsPrice * item.unit_quantity
-      : basePrice * item.unit_quantity;
+    return (product.price + optionsPrice) * item.quantity * item.unit_quantity;
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - leve e transparente */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-white/30 z-40"
           />
 
           {/* Modal */}
@@ -218,17 +223,6 @@ export default function OrderDetailsModal({
                       <div>
                         <p className="text-sm text-gray-500">Telefone</p>
                         <p className="text-[#6b4c3b]">{order.customer.phone}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Endereço</p>
-                        <p className="text-[#6b4c3b]">
-                          {order.delivery_address}
-                        </p>
-                        {order.customer.complement && (
-                          <p className="text-[#6b4c3b] mt-1">
-                            Complemento: {order.customer.complement}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>

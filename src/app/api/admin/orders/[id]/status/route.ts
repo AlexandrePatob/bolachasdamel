@@ -4,11 +4,12 @@ import { OrderStatus } from '@/types/database';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { status } = await request.json();
-    const updatedOrder = await updateOrderStatus(params.id, status as OrderStatus);
+    const updatedOrder = await updateOrderStatus(id, status as OrderStatus);
     return NextResponse.json(updatedOrder);
   } catch (error) {
     console.error('Error updating order status:', error);
