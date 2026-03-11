@@ -31,9 +31,6 @@ export default function CreateOrderModal({
     name: "",
     email: "",
     phone: "",
-    address: "",
-    number: "",
-    complement: "",
     observations: "",
     delivery_date: "",
   });
@@ -210,8 +207,6 @@ export default function CreateOrderModal({
           customer_name: customer.name,
           customer_email: customer.email,
           customer_phone: customer.phone,
-          customer_address: customer.address,
-          complement: customer.complement,
           observations: customer.observations,
           delivery_date: customer.delivery_date,
           total_amount: totalAmount,
@@ -376,54 +371,6 @@ export default function CreateOrderModal({
                         value={customer.phone}
                         onChange={(e) =>
                           setCustomer({ ...customer, phone: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
-                      />
-                    </div>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
-                        Endereço
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={customer.address}
-                        onChange={(e) =>
-                          setCustomer({ ...customer, address: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
-                        Número
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={customer.number}
-                        onChange={(e) =>
-                          setCustomer({ ...customer, number: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-[#6b4c3b] mb-1">
-                        Complemento
-                      </label>
-                      <input
-                        type="text"
-                        value={customer.complement}
-                        onChange={(e) =>
-                          setCustomer({
-                            ...customer,
-                            complement: e.target.value,
-                          })
                         }
                         className="w-full px-3 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200"
                       />

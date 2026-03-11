@@ -219,17 +219,6 @@ export default function OrderDetailsModal({
                         <p className="text-sm text-gray-500">Telefone</p>
                         <p className="text-[#6b4c3b]">{order.customer.phone}</p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Endereço</p>
-                        <p className="text-[#6b4c3b]">
-                          {order.delivery_address}
-                        </p>
-                        {order.customer.complement && (
-                          <p className="text-[#6b4c3b] mt-1">
-                            Complemento: {order.customer.complement}
-                          </p>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </div>

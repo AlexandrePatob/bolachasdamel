@@ -23,6 +23,7 @@ export async function getProducts(category?: string) {
             image,
             has_chocolate_option,
             category,
+            unit_quantity,
             product_options (
               id,
               type,
@@ -45,7 +46,18 @@ export async function getProducts(category?: string) {
     query.eq("category", category);
   }
 
-  const { data, error } = await query.order("created_at", { ascending: true });
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+// Categories
+export async function getCategories() {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, label, sort_order, is_featured")
+    .order("sort_order", { ascending: true });
 
   if (error) throw error;
   return data;
@@ -65,8 +77,9 @@ export async function getFavorites() {
         `
     )
     .eq("is_available", true)
-    .in("name", ["Só um mimo", "Feliz Páscoa"])
-    .order("created_at", { ascending: true });
+    .eq("category", "pascoa")
+    .order("created_at", { ascending: false })
+    .limit(6);
 
   if (error) throw error;
   return data;
@@ -77,7 +90,6 @@ export async function createCustomer(customer: {
   name: string;
   email: string;
   phone: string;
-  address: string;
 }) {
   const { data, error } = await supabase
     .from("customers")
@@ -94,8 +106,6 @@ export async function createOrderWithCustomer(orderData: {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  customer_address: string;
-  complement?: string;
   items: {
     product_id: string;
     quantity: number;
@@ -112,7 +122,6 @@ export async function createOrderWithCustomer(orderData: {
     !orderData.customer_name ||
     !orderData.customer_email ||
     !orderData.customer_phone ||
-    !orderData.customer_address ||
     !orderData.items ||
     orderData.items.length === 0 ||
     !orderData.delivery_date
@@ -142,8 +151,6 @@ export async function createOrderWithCustomer(orderData: {
         name: orderData.customer_name,
         email: orderData.customer_email,
         phone: orderData.customer_phone,
-        address: orderData.customer_address,
-        complement: orderData.complement || null,
       })
       .select()
       .single();
@@ -157,8 +164,6 @@ export async function createOrderWithCustomer(orderData: {
       .update({
         name: orderData.customer_name,
         phone: orderData.customer_phone,
-        address: orderData.customer_address,
-        complement: orderData.complement || null,
       })
       .eq("id", existingCustomer.id);
 
@@ -176,13 +181,12 @@ export async function createOrderWithCustomer(orderData: {
 
   if (productsError) throw productsError;
 
-  // Criar pedido
+  // Criar pedido (endereço removido - entrega combinada via WhatsApp)
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
       customer_id: existingCustomer.id,
       total_amount: orderData.total_amount,
-      delivery_address: orderData.customer_address,
       observations: orderData.observations || null,
       delivery_date: orderData.delivery_date,
       status: "pending",

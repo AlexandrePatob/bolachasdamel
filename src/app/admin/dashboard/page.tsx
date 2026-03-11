@@ -980,15 +980,6 @@ export default function AdminDashboard() {
                       <div className="text-sm text-pink-600">
                         {order.customer.email}
                       </div>
-                      <div className="text-sm text-gray-600">
-                        {order.delivery_address}
-                        {order.customer?.complement && (
-                          <span className="text-gray-500">
-                            {" "}
-                            - {order.customer.complement}
-                          </span>
-                        )}
-                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1155,16 +1146,6 @@ export default function AdminDashboard() {
 
                 <div className="text-sm text-pink-600">
                   {order.customer.email}
-                </div>
-
-                <div className="text-sm text-gray-600">
-                  {order.delivery_address}
-                  {order.customer?.complement && (
-                    <span className="text-gray-500">
-                      {" "}
-                      - {order.customer.complement}
-                    </span>
-                  )}
                 </div>
 
                 <div className="space-y-1">

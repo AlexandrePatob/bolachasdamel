@@ -3,7 +3,6 @@ export type OrderStatus = 'pending' | 'preparing' | 'completed' | 'shipped' | 'd
 export interface CreateOrder {
     customer_id: string;
     total_amount: number;
-    delivery_address: string;
     status?: OrderStatus;
     shipping_fee: number;
 }
@@ -73,7 +72,7 @@ export interface Order {
     customer_name: string;
     customer_email: string;
     customer_phone: string;
-    delivery_address: string;
+    delivery_address?: string | null;
     observations: string | null;
     total_amount: number;
     shipping_fee: number;
@@ -86,8 +85,6 @@ export interface Order {
         name: string;
         email: string;
         phone: string;
-        address: string;
-        complement: string | null;
     };
     items: {
         id: string;
@@ -126,8 +123,6 @@ export interface CreateOrderData {
     customer_name: string;
     customer_email: string;
     customer_phone: string;
-    customer_address: string;
-    complement?: string;
     observations?: string;
     delivery_date: string;
     items: {

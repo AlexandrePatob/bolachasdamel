@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { Product, ProductOption } from "@/types/database";
@@ -37,8 +37,12 @@ const ProductDetailsModal = ({
   };
 
   const minQty = getMinQty(product.product_quantity_rules);
-  const [quantity, setQuantity] = useState(minQty);
-  const [unitQuantity, setUnitQuantity] = useState(1);
+  const [quantity] = useState(minQty); // Itens fixos - não alterável
+  const [unitQuantity, setUnitQuantity] = useState(product.unit_quantity || 1);
+
+  useEffect(() => {
+    if (isOpen) setUnitQuantity(product.unit_quantity || 1);
+  }, [isOpen, product.id, product.unit_quantity]);
 
   const calculateTotalPrice = () => {
     const optionsPrice = selectedOptions.reduce(
@@ -79,23 +83,21 @@ const ProductDetailsModal = ({
     setSelectedOptions([option]);
   };
 
-  const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity < minQty) {
-      toast.error(
-        `Quantidade mínima é ${minQty} unidade${minQty > 1 ? "s" : ""}`
-      );
-      return;
-    }
-    setQuantity(newQuantity);
-  };
-
   const handleUnitQuantityChange = (newUnitQuantity: number) => {
     if (newUnitQuantity < 1) {
       toast.error("Quantidade de unidades deve ser maior que zero");
       return;
     }
+    const validation = validateQuantity(quantity, newUnitQuantity, product.product_quantity_rules);
+    if (!validation.isValid && validation.message) {
+      toast.error(validation.message);
+      return;
+    }
     setUnitQuantity(newUnitQuantity);
   };
+
+  const canDecreaseUnits = unitQuantity > 1 && validateQuantity(quantity, unitQuantity - 1, product.product_quantity_rules).isValid;
+  const canIncreaseUnits = validateQuantity(quantity, unitQuantity + 1, product.product_quantity_rules).isValid;
 
   const handleAddToCart = () => {
     const validation = validateQuantity(
@@ -235,24 +237,9 @@ const ProductDetailsModal = ({
                           product.product_quantity_rules.length > 0 && (
                             <div className="flex items-center gap-1">
                               <span className="text-xs font-medium text-gray-700">Items:</span>
-                              <div className="ml-1 flex items-center gap-1 bg-white rounded-full p-1 shadow-sm">
-                                <button
-                                  onClick={() => handleQuantityChange(quantity - 1)}
-                                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
-                                  disabled={quantity <= minQty}
-                                >
-                                  -
-                                </button>
-                                <span className="w-6 text-center text-sm font-medium">
-                                  {quantity}
-                                </span>
-                                <button
-                                  onClick={() => handleQuantityChange(quantity + 1)}
-                                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
-                                >
-                                  +
-                                </button>
-                              </div>
+                              <span className="w-6 text-center text-sm font-medium bg-gray-50 rounded-full py-1 px-2">
+                                {quantity}
+                              </span>
                             </div>
                           )}
                         <div className="flex items-center gap-1">
@@ -260,8 +247,8 @@ const ProductDetailsModal = ({
                           <div className="ml-2 flex items-center gap-1 bg-white rounded-full p-1 shadow-sm">
                             <button
                               onClick={() => handleUnitQuantityChange(unitQuantity - 1)}
-                              className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
-                              disabled={unitQuantity <= 1}
+                              className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              disabled={!canDecreaseUnits}
                             >
                               -
                             </button>
@@ -270,7 +257,8 @@ const ProductDetailsModal = ({
                             </span>
                             <button
                               onClick={() => handleUnitQuantityChange(unitQuantity + 1)}
-                              className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors"
+                              className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              disabled={!canIncreaseUnits}
                             >
                               +
                             </button>

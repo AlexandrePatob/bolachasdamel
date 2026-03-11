@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { ShoppingCart, Settings2, ChevronRight } from "lucide-react";
 import { Product, ProductOption } from "@/types/database";
 import ChocolateOptionModal from "./ChocolateOptionModal";
 import ProductDetailsModal from "./ProductDetailsModal";
@@ -26,6 +27,20 @@ interface ProductListProps {
   }) => void;
 }
 
+const SkeletonCard = () => (
+  <div className="bg-white border border-rose-100 rounded-xl overflow-hidden animate-pulse">
+    <div className="aspect-[4/3] bg-gray-100" />
+    <div className="p-4 space-y-2">
+      <div className="h-4 bg-gray-100 rounded w-3/4" />
+      <div className="h-3 bg-gray-100 rounded w-1/2" />
+      <div className="flex items-center justify-between mt-3">
+        <div className="h-5 bg-gray-100 rounded w-1/3" />
+        <div className="h-9 bg-gray-100 rounded-lg w-24" />
+      </div>
+    </div>
+  </div>
+);
+
 const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = false }: ProductListProps) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,31 +50,21 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
 
   const getCategoryTitle = (category: string) => {
     switch (category) {
-      case "maes":
-        return "Presentes para o Dia das Mães";
-      case "fe":
-        return "Produtos de Fé";
-      case "pascoa":
-        return "Produtos de Páscoa";
-      case "outros":
-        return "Outros Produtos";
-      default:
-        return "Produtos";
+      case "maes": return "Presentes para o Dia das Mães";
+      case "fe": return "Produtos de Fé";
+      case "pascoa": return "Páscoa 2026 - Presentes Especiais";
+      case "outros": return "Outros Produtos";
+      default: return "Produtos";
     }
   };
 
   const getCategoryDescription = (category: string) => {
     switch (category) {
-      case "maes":
-        return "Presentes especiais para celebrar o amor e carinho das mães";
-      case "fe":
-        return "Produtos que inspiram e fortalecem a fé";
-      case "pascoa":
-        return "Deliciosas opções para celebrar a Páscoa";
-      case "outros":
-        return "Conheça nossa variedade de produtos";
-      default:
-        return "Nossos produtos";
+      case "maes": return "Presentes especiais para celebrar o amor e carinho das mães";
+      case "fe": return "Produtos que inspiram e fortalecem a fé";
+      case "pascoa": return "Delícias artesanais para celebrar a Páscoa 2026";
+      case "outros": return "Conheça nossa variedade de produtos";
+      default: return "Nossos produtos";
     }
   };
 
@@ -68,12 +73,17 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
     return Math.min(...rules.map(r => r.min_qty));
   };
 
+  const getMinPrice = (rules?: Product['product_quantity_rules']) => {
+    if (!rules || rules.length === 0) return null;
+    const prices = rules.map(r => r.price_per_unit ?? 0).filter(p => p > 0);
+    return prices.length > 0 ? Math.min(...prices) : null;
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       const response = await fetch(`/api/products?category=${category}`, {
         next: { revalidate: 300 },
       });
-
       if (!response.ok) throw new Error("Failed to fetch products");
       const data = await response.json();
       setProducts(data);
@@ -116,7 +126,6 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
         });
         toast.success(`${product.name} adicionado ao ${isKitBuilder ? "kit" : "carrinho"}!`, {
           duration: 2000,
-          icon: "🛒",
           style: {
             background: "#FDF2F8",
             color: "#BE185D",
@@ -157,7 +166,6 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
 
       toast.success(`${selectedProduct.name} adicionado ao ${isKitBuilder ? "kit" : "carrinho"}!`, {
         duration: 2000,
-        icon: "🛒",
         style: {
           background: "#FDF2F8",
           color: "#BE185D",
@@ -171,145 +179,119 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
     [selectedProduct, onOrderClick]
   );
 
+  const hasOptions = (product: Product) =>
+    product.has_chocolate_option ||
+    (product.product_quantity_rules && product.product_quantity_rules.length > 0);
+
   if (loading) {
     return (
-      <section className="w-full min-h-[80vh] flex items-center justify-center bg-gradient-to-b from-pink-50 to-white">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <motion.div
-            animate={{
-              scale: [1, 1.2, 1],
-              rotate: [0, 360],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full"
-          />
-          <motion.p
-            animate={{
-              opacity: [0.5, 1, 0.5],
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="text-xl font-medium text-pink-600"
-          >
-            Carregando produtos...
-          </motion.p>
+      <section className="w-full">
+        <div className={`grid grid-cols-1 ${showTitle ? "md:grid-cols-3 lg:grid-cols-4" : "md:grid-cols-2"} gap-6`}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       </section>
     );
   }
 
   return (
-    <section className={`w-full ${showTitle ? "min-h-[80vh]" : "min-h-[40vh]"} bg-gradient-to-b from-pink-50 to-white`}>
-      <div className="container mx-auto px-4 py-8">
-        {showTitle && (
-          <div className="text-center mb-12">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-bold text-pink-600 mb-4 flex items-center justify-center space-x-2"
+    <section className="w-full">
+      {showTitle && (
+        <div className="text-center mb-10">
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-2xl md:text-3xl font-bold text-gray-800"
           >
-            <span>{getCategoryTitle(category)}</span>
+            {getCategoryTitle(category)}
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-gray-600 max-w-2xl mx-auto text-lg"
+            transition={{ delay: 0.1 }}
+            className="text-neutral-500 mt-2 max-w-xl mx-auto"
           >
-              {getCategoryDescription(category)}
-            </motion.p>
-          </div>
-        )}
+            {getCategoryDescription(category)}
+          </motion.p>
+        </div>
+      )}
 
-        <div className={`grid grid-cols-1 ${showTitle ? "md:grid-cols-3" : "md:grid-cols-2"} gap-4`}>
-          {products?.map((product, index) => (
+      <div className={`grid grid-cols-1 ${showTitle ? "md:grid-cols-3 lg:grid-cols-4" : "md:grid-cols-2"} gap-6`}>
+        {products?.map((product, index) => {
+          const minPrice = getMinPrice(product.product_quantity_rules);
+          const displayPrice = product.price > 0
+            ? `R$ ${product.price.toFixed(2)}`
+            : minPrice
+            ? `A partir de R$ ${minPrice.toFixed(2)}`
+            : "Preço sob consulta";
+          const hasRule = product.product_quantity_rules && product.product_quantity_rules.length > 0;
+
+          return (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="relative aspect-square rounded-2xl overflow-hidden bg-white"
+              transition={{ delay: index * 0.05 }}
+              className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg border border-rose-100 transition-all duration-300 cursor-pointer flex flex-col"
+              onClick={() => handleProductClick(product)}
             >
-              <div
-                className="relative w-full h-full cursor-pointer group"
-                onClick={() => handleProductClick(product)}
-              >
+              <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100 shrink-0">
                 <Image
                   src={product.image || ""}
                   alt={product.name}
                   fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
                 />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-white bg-gradient-to-t from-black/60 to-transparent">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base md:text-lg font-bold mb-1 text-white transform transition-transform duration-300 group-hover:translate-y-[-4px]">
-                        {product.name}
-                      </h3>
-                      <p className="text-xl md:text-2xl font-bold text-pink-200 transform transition-transform duration-300 group-hover:translate-y-[-4px]">
-                        {product.price > 0 && `R$ ${product.price.toFixed(2)}`}
-                      </p>
-                      {(product.has_chocolate_option || (product.product_quantity_rules && product.product_quantity_rules.length > 0)) && (
-                        <motion.p 
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="text-sm text-pink-200 mt-1 flex items-center"
-                        >
-                          <motion.span 
-                            animate={{ rotate: [0, 360] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                            className="mr-1"
-                          >
-                            ⚙️
-                          </motion.span>
-                          Clique para ver opções
-                        </motion.p>
-                      )}
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToCart(product);
-                      }}
-                      className={`${
-                        product.has_chocolate_option || (product.product_quantity_rules && product.product_quantity_rules.length > 0)
-                          ? "bg-pink-500 hover:bg-pink-600"
-                          : "bg-pink-600 hover:bg-pink-700"
-                      } text-white px-4 py-2 rounded-full transition-colors duration-300 flex items-center justify-center space-x-2`}
+                <span className="absolute top-2 left-2 bg-white/95 text-pink-600 text-[10px] font-semibold px-2 py-1 rounded-md border border-pink-100">
+                  Artesanal
+                </span>
+              </div>
+
+              <div className="p-4 flex flex-col flex-1 min-h-0">
+                <h3 className="text-sm md:text-base font-semibold text-gray-800 leading-tight line-clamp-2">
+                  {product.name}
+                </h3>
+                <p className="text-[10px] md:text-xs text-rose-400 mt-0.5 mb-2">
+                  Feito com amor ✨
+                </p>
+
+                {hasOptions(product) && (
+                  <div className="flex items-center gap-1 mb-3">
+                    <motion.span
+                      className="flex items-center gap-1.5 text-xs font-medium text-pink-600 bg-pink-50 border border-pink-200 px-2.5 py-1 rounded-full cursor-pointer shadow-sm group-hover:bg-pink-100 group-hover:border-pink-300 group-hover:shadow-md transition-all duration-200"
+                      whileHover={{ scale: 1.03, y: -1 }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      <span>Adicionar</span>
-                      <motion.span
-                        animate={{ 
-                          rotate: [0, 10, -10, 0],
-                          scale: [1, 1.2, 1.2, 1]
-                        }}
-                        transition={{ 
-                          duration: 0.5,
-                          repeat: Infinity,
-                          repeatDelay: 2
-                        }}
-                      >
-                        🛒
-                      </motion.span>
-                    </motion.button>
+                      <Settings2 className="w-3.5 h-3.5 text-pink-500" />
+                      Ver opções
+                      <ChevronRight className="w-3.5 h-3.5 text-pink-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    </motion.span>
                   </div>
+                )}
+
+                <div className="flex items-center justify-between gap-3 mt-auto">
+                  <p className="text-sm md:text-base font-bold text-pink-600">
+                    {displayPrice}
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddToCart(product);
+                    }}
+                    className="flex items-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors shrink-0"
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5" />
+                    <span>Adicionar</span>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       <ChocolateOptionModal
