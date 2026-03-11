@@ -247,8 +247,8 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
           const displayPrice = product.price > 0
             ? `R$ ${product.price.toFixed(2)}`
             : minPrice
-            ? `A partir de R$ ${minPrice.toFixed(2)}`
-            : "Preço sob consulta";
+              ? `A partir de R$ ${minPrice.toFixed(2)}`
+              : "Preço sob consulta";
           const hasRule = product.product_quantity_rules && product.product_quantity_rules.length > 0;
 
           return (
