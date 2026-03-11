@@ -9,7 +9,7 @@ export async function POST(request: Request) {
         const data = await verifyAdminCredentials(email, password);
 
         // Define o cookie de autenticação
-        const cookieStore = cookies();
+        const cookieStore = await cookies();
         cookieStore.set('admin_token', data.session?.access_token || '', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',

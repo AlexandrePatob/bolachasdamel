@@ -14,8 +14,6 @@ import { CartItem } from "@/types/cart";
 import ProductList from "@/components/ProductList";
 import KitBuilder from "@/components/KitBuilder";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);

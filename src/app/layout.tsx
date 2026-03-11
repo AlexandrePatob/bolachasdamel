@@ -11,6 +11,7 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
   description: 'As melhores bolachas artesanais feitas com amor e carinho.',
+  icons: { icon: '/favicon.ico' },
   openGraph: {
     title: 'Bolachas da Mel - Deliciosas Bolachas Artesanais',
     description: 'As melhores bolachas artesanais feitas com amor e carinho.',
