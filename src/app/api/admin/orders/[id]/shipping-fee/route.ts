@@ -3,11 +3,12 @@ import { updateOrderShippingFee } from '@/lib/supabase';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { shipping_fee } = await request.json();
-    const updatedOrder = await updateOrderShippingFee(params.id, shipping_fee);
+    const updatedOrder = await updateOrderShippingFee(id, shipping_fee);
     return NextResponse.json(updatedOrder);
   } catch (error) {
     console.error('Error updating shipping fee:', error);

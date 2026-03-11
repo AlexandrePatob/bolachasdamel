@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Product, ProductOption } from "@/types/database";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { validateQuantity } from "@/lib/quantityRules";
+import { validateQuantity, getFixedPackSizes } from "@/lib/quantityRules";
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -42,35 +42,41 @@ export default function CreateOrderModal({
   const [quickQuantity, setQuickQuantity] = useState(1);
   const [quickUnitQuantity, setQuickUnitQuantity] = useState(1);
   const [quickSelectedOptions, setQuickSelectedOptions] = useState<ProductOption[]>([]);
+  const [quickHasChocolate, setQuickHasChocolate] = useState(false);
 
   const getMinQty = (rules?: Product["product_quantity_rules"]) => {
     if (!rules || rules.length === 0) return 1;
-    return Math.min(...rules.map((r) => r.min_qty));
+    const packSizes = getFixedPackSizes(rules);
+    return packSizes.length > 0 ? 1 : Math.min(...rules.map((r) => r.min_qty));
+  };
+
+  const getInitialUnitQty = (product: Product) => {
+    const packSizes = getFixedPackSizes(product.product_quantity_rules);
+    return packSizes[0] ?? product.unit_quantity ?? 1;
   };
 
   const calculateTotalPrice = (item: OrderItem) => {
     const product = products.find((p) => p.id === item.product_id);
     if (!product) return 0;
 
-    const optionsPrice = item.selected_options?.reduce(
-      (sum, option) => sum + option.price_delta,
-      0
-    ) || 0;
+    const optionsPrice =
+      item.selected_options?.reduce(
+        (sum, option) => sum + option.price_delta,
+        0
+      ) || 0;
 
     const validation = validateQuantity(
       item.quantity,
       item.unit_quantity,
       product.product_quantity_rules || []
     );
-    const basePrice = validation.price || product.price;
 
-    if (optionsPrice > 0 && !validation.price) {
-      return optionsPrice * item.unit_quantity;
+    if (validation.price !== undefined && validation.price !== null) {
+      return validation.price + optionsPrice * item.quantity;
     }
-
-    return validation.price
-      ? basePrice + optionsPrice * item.unit_quantity
-      : basePrice * item.unit_quantity;
+    return (
+      (product.price + optionsPrice) * item.quantity * item.unit_quantity
+    );
   };
 
   useEffect(() => {
@@ -210,20 +216,14 @@ export default function CreateOrderModal({
           observations: customer.observations,
           delivery_date: customer.delivery_date,
           total_amount: totalAmount,
-          items: items.map((item) => {
-            const product = products.find((p) => p.id === item.product_id);
-            if (!product) return item;
-
-            const validation = validateQuantity(
-              item.quantity,
-              item.unit_quantity,
-              product.product_quantity_rules || []
-            );
-            return {
-              ...item,
-              unit_price: validation.price || product.price,
-            };
-          }),
+          items: items.map((item) => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_quantity: item.unit_quantity,
+            unit_price: calculateTotalPrice(item) / item.quantity,
+            has_chocolate: item.has_chocolate,
+            selected_options: (item.selected_options || []).map((o) => ({ id: o.id })),
+          })),
         }),
       });
 
@@ -253,27 +253,24 @@ export default function CreateOrderModal({
       return;
     }
 
-    const optionsPrice = quickSelectedOptions.reduce(
-      (sum, option) => sum + option.price_delta,
-      0
-    );
+    const newItem: OrderItem = {
+      product_id: quickAddProduct.id,
+      quantity: quickQuantity,
+      unit_quantity: quickUnitQuantity,
+      unit_price: 0,
+      has_chocolate: quickHasChocolate,
+      selected_options: quickSelectedOptions,
+    };
+    const total = calculateTotalPrice(newItem);
+    newItem.unit_price = total / quickQuantity;
 
-    setItems([
-      ...items,
-      {
-        product_id: quickAddProduct.id,
-        quantity: quickQuantity,
-        unit_price: validation.price || quickAddProduct.price + optionsPrice,
-        has_chocolate: false,
-        unit_quantity: quickUnitQuantity,
-        selected_options: quickSelectedOptions,
-      },
-    ]);
+    setItems([...items, newItem]);
 
     setQuickAddProduct(null);
     setQuickQuantity(1);
     setQuickUnitQuantity(1);
     setQuickSelectedOptions([]);
+    setQuickHasChocolate(false);
   };
 
   return (
@@ -286,7 +283,7 @@ export default function CreateOrderModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-white/30 z-40"
           />
 
           {/* Modal */}
@@ -490,8 +487,15 @@ export default function CreateOrderModal({
                                           onClick={() => {
                                             setQuickAddProduct(product);
                                             const minQty = getMinQty(product.product_quantity_rules);
+                                            const unitQty = getInitialUnitQty(product);
                                             setQuickQuantity(minQty);
-                                            setQuickUnitQuantity(1);
+                                            setQuickUnitQuantity(unitQty);
+                                            setQuickHasChocolate(false);
+                                            if (product.product_options?.length) {
+                                              setQuickSelectedOptions([product.product_options[0]]);
+                                            } else {
+                                              setQuickSelectedOptions([]);
+                                            }
                                           }}
                                           className="flex flex-col p-3 border border-pink-100 rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-colors text-left h-full"
                                         >
@@ -514,8 +518,17 @@ export default function CreateOrderModal({
                                               {product.product_quantity_rules && product.product_quantity_rules.length > 0 && (
                                                 <div className="text-xs text-pink-600 mt-1">
                                                   {(() => {
+                                                    const packSizes = getFixedPackSizes(product.product_quantity_rules);
+                                                    if (packSizes.length > 0) {
+                                                      const rule = product.product_quantity_rules?.find(
+                                                        (r) => r.min_qty === packSizes[0] && r.price != null
+                                                      );
+                                                      return rule
+                                                        ? `A partir de R$ ${Number(rule.price).toFixed(2)}`
+                                                        : `Pacotes: ${packSizes.join(", ")} un`;
+                                                    }
                                                     const minQty = getMinQty(product.product_quantity_rules);
-                                                    const extra = product.product_quantity_rules.find(r => r.extra_per_unit != null);
+                                                    const extra = product.product_quantity_rules.find((r) => r.extra_per_unit != null);
                                                     if (extra) {
                                                       return `+${extra.min_qty} itens: R$ ${Number(extra.extra_per_unit).toFixed(2)}`;
                                                     }
@@ -540,7 +553,7 @@ export default function CreateOrderModal({
 
                 {/* Quick Add Modal */}
                 {quickAddProduct && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                  <div className="fixed inset-0 bg-white/30 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-4">
@@ -580,32 +593,77 @@ export default function CreateOrderModal({
                           <div className="bg-pink-50 rounded-lg p-3">
                             <h4 className="text-sm font-medium text-[#6b4c3b] mb-2">Escolha o tipo:</h4>
                             <div className="grid grid-cols-2 gap-2">
-                              {quickAddProduct.product_options.map((option) => (
-                                <button
-                                  key={option.id}
-                                  onClick={() => setQuickSelectedOptions([option])}
-                                  className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
-                                    quickSelectedOptions.some((o) => o.id === option.id)
-                                      ? 'border-pink-500 bg-pink-100'
-                                      : 'border-gray-200 hover:border-pink-200'
-                                  }`}
-                                >
-                                  <span className="text-sm">{option.name}</span>
-                                  {option.price_delta > 0 && (
-                                    <span className="text-xs text-pink-600 font-medium">
-                                      +R$ {option.price_delta.toFixed(2)}
+                              {quickAddProduct.product_options.map((option) => {
+                                const rule = quickAddProduct.product_quantity_rules?.find(
+                                  (r) => r.min_qty === quickUnitQuantity && r.price != null
+                                );
+                                const basePrice = rule ? Number(rule.price) : quickAddProduct.price;
+                                const optionTotalPrice = basePrice + (option.price_delta ?? 0);
+                                return (
+                                  <button
+                                    key={option.id}
+                                    onClick={() => setQuickSelectedOptions([option])}
+                                    className={`flex flex-col items-start p-2 rounded-lg border transition-colors text-left ${
+                                      quickSelectedOptions.some((o) => o.id === option.id)
+                                        ? "border-pink-500 bg-pink-100"
+                                        : "border-gray-200 hover:border-pink-200"
+                                    }`}
+                                  >
+                                    <span className="text-sm">{option.name}</span>
+                                    <span className="text-xs text-pink-600 font-semibold">
+                                      R$ {optionTotalPrice.toFixed(2)}
                                     </span>
-                                  )}
-                                </button>
-                              ))}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
 
+                        {(() => {
+                          const packSizes = getFixedPackSizes(quickAddProduct.product_quantity_rules);
+                          const isFixedPack = packSizes.length > 0;
+                          return (
+                            isFixedPack && (packSizes.length > 1 || !quickAddProduct.product_options?.length) && (
+                              <div>
+                                <h4 className="text-sm font-medium text-[#6b4c3b] mb-2">Escolha o pacote:</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                  {packSizes.map((size) => {
+                                    const rule = quickAddProduct.product_quantity_rules?.find(
+                                      (r) => r.min_qty === size && r.price != null
+                                    );
+                                    const packPrice = rule ? Number(rule.price).toFixed(2) : "";
+                                    return (
+                                      <button
+                                        key={size}
+                                        onClick={() => setQuickUnitQuantity(size)}
+                                        className={`flex flex-col items-start p-3 rounded-lg border transition-colors text-left ${
+                                          quickUnitQuantity === size
+                                            ? "border-pink-500 bg-pink-50"
+                                            : "border-gray-200 hover:border-pink-200"
+                                        }`}
+                                      >
+                                        <span className="text-sm font-medium">{size} unidades</span>
+                                        {packPrice && (
+                                          <span className="text-xs text-pink-600 font-semibold">
+                                            R$ {packPrice}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          );
+                        })()}
+
                         {quickAddProduct.product_quantity_rules && quickAddProduct.product_quantity_rules.length > 0 && (
                           <div>
                             <label className="block text-sm font-medium text-[#6b4c3b] mb-2">
-                              Quantidade de Itens
+                              {getFixedPackSizes(quickAddProduct.product_quantity_rules).length > 0
+                                ? "Quantidade de pacotes"
+                                : "Quantidade de itens"}
                             </label>
                             <div className="flex items-center space-x-3">
                               <button
@@ -666,63 +724,71 @@ export default function CreateOrderModal({
                           </div>
                         )}
 
-                        <div>
-                          <label className="block text-sm font-medium text-[#6b4c3b] mb-2">
-                            Quantidade de Unidades
-                          </label>
-                          <div className="flex items-center space-x-3">
-                            <button
-                              onClick={() => {
-                                if (quickUnitQuantity > 1) {
-                                  setQuickUnitQuantity(quickUnitQuantity - 1);
-                                }
-                              }}
-                              className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              min="1"
-                              value={quickUnitQuantity}
-                              onChange={(e) => {
-                                const newUnitQuantity = parseInt(e.target.value);
-                                if (newUnitQuantity < 1) {
-                                  toast.error("Quantidade mínima é 1 unidade");
-                                  return;
-                                }
-                                const validation = validateQuantity(
-                                  quickQuantity,
-                                  newUnitQuantity,
-                                  quickAddProduct.product_quantity_rules || []
-                                );
-                                if (!validation.isValid && validation.message) {
-                                  toast.error(validation.message);
-                                  return;
-                                }
-                                setQuickUnitQuantity(newUnitQuantity);
-                              }}
-                              className="w-20 px-3 py-2 text-center border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 text-lg"
-                            />
-                            <button
-                              onClick={() => {
-                                const validation = validateQuantity(
-                                  quickQuantity,
-                                  quickUnitQuantity + 1,
-                                  quickAddProduct.product_quantity_rules || []
-                                );
-                                if (validation.isValid) {
-                                  setQuickUnitQuantity(quickUnitQuantity + 1);
-                                } else if (validation.message) {
-                                  toast.error(validation.message);
-                                }
-                              }}
-                              className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
-                            >
-                              +
-                            </button>
+                        {getFixedPackSizes(quickAddProduct.product_quantity_rules ?? []).length === 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-[#6b4c3b] mb-2">
+                              Quantidade de unidades
+                            </label>
+                            <div className="flex items-center space-x-3">
+                              <button
+                                onClick={() => {
+                                  if (quickUnitQuantity > 1) {
+                                    const v = validateQuantity(
+                                      quickQuantity,
+                                      quickUnitQuantity - 1,
+                                      quickAddProduct.product_quantity_rules || []
+                                    );
+                                    if (v.isValid) setQuickUnitQuantity(quickUnitQuantity - 1);
+                                    else if (v.message) toast.error(v.message);
+                                  }
+                                }}
+                                className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={quickUnitQuantity}
+                                onChange={(e) => {
+                                  const newUnitQuantity = parseInt(e.target.value);
+                                  if (newUnitQuantity < 1) {
+                                    toast.error("Quantidade mínima é 1 unidade");
+                                    return;
+                                  }
+                                  const validation = validateQuantity(
+                                    quickQuantity,
+                                    newUnitQuantity,
+                                    quickAddProduct.product_quantity_rules || []
+                                  );
+                                  if (!validation.isValid && validation.message) {
+                                    toast.error(validation.message);
+                                    return;
+                                  }
+                                  setQuickUnitQuantity(newUnitQuantity);
+                                }}
+                                className="w-20 px-3 py-2 text-center border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-200 text-lg"
+                              />
+                              <button
+                                onClick={() => {
+                                  const validation = validateQuantity(
+                                    quickQuantity,
+                                    quickUnitQuantity + 1,
+                                    quickAddProduct.product_quantity_rules || []
+                                  );
+                                  if (validation.isValid) {
+                                    setQuickUnitQuantity(quickUnitQuantity + 1);
+                                  } else if (validation.message) {
+                                    toast.error(validation.message);
+                                  }
+                                }}
+                                className="w-10 h-10 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 text-lg"
+                              >
+                                +
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Preço */}
                         <div className="border-t border-gray-200 pt-3 mt-3">
@@ -746,18 +812,8 @@ export default function CreateOrderModal({
                             <label className="inline-flex items-center">
                               <input
                                 type="checkbox"
-                                checked={items[items.length - 1]?.has_chocolate || false}
-                                onChange={(e) => {
-                                  const newItem = {
-                                    product_id: quickAddProduct.id,
-                                    quantity: quickQuantity,
-                                    unit_price: quickAddProduct.price,
-                                    has_chocolate: e.target.checked,
-                                    unit_quantity: quickUnitQuantity,
-                                    selected_options: quickSelectedOptions,
-                                  };
-                                  setItems([...items.slice(0, -1), newItem]);
-                                }}
+                                checked={quickHasChocolate}
+                                onChange={(e) => setQuickHasChocolate(e.target.checked)}
                                 className="form-checkbox h-5 w-5 text-[#6b4c3b] border-pink-200 rounded focus:ring-[#6b4c3b]"
                               />
                               <span className="ml-2 text-base text-[#6b4c3b]">
@@ -821,10 +877,19 @@ export default function CreateOrderModal({
                               <h4 className="font-medium text-[#6b4c3b]">
                                 {product.name}
                               </h4>
+                              {item.selected_options && item.selected_options.length > 0 && (
+                                <p className="text-xs text-pink-600 mt-0.5">
+                                  {item.selected_options.map((o) => o.name).join(", ")}
+                                </p>
+                              )}
                               {product.product_quantity_rules && product.product_quantity_rules.length > 0 && (
                                 <div className="flex items-center space-x-2 mt-1">
                                   <div className="flex items-center space-x-2">
-                                    <span className="text-sm text-gray-600">Quantidade de Unidades:</span>
+                                    <span className="text-sm text-gray-600">
+                                      {getFixedPackSizes(product.product_quantity_rules).length > 0
+                                        ? "Pacotes:"
+                                        : "Itens:"}
+                                    </span>
                                     <button
                                       onClick={() =>
                                         handleQuantityChange(
@@ -853,34 +918,43 @@ export default function CreateOrderModal({
                                   </div>
                                 </div>
                               )}
-                              <div className="flex items-center space-x-2 mt-1">
-                                <span className="text-sm text-gray-600">Quantidade de Items:</span>
-                                <button
-                                  onClick={() =>
-                                    handleUnitQuantityChange(
-                                      index,
-                                      Math.max(1, item.unit_quantity - 1)
-                                    )
-                                  }
-                                  className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
-                                >
-                                  -
-                                </button>
-                                <span className="text-sm text-[#6b4c3b]">
-                                  {item.unit_quantity}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    handleUnitQuantityChange(
-                                      index,
-                                      item.unit_quantity + 1
-                                    )
-                                  }
-                                  className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
-                                >
-                                  +
-                                </button>
-                              </div>
+                              {getFixedPackSizes(product.product_quantity_rules ?? []).length > 0 ? (
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className="text-sm text-gray-600">Pacote:</span>
+                                  <span className="text-sm text-[#6b4c3b]">{item.unit_quantity} un</span>
+                                </div>
+                              ) : (
+                                (product.product_quantity_rules?.length ?? 0) > 0 && (
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    <span className="text-sm text-gray-600">Unidades:</span>
+                                    <button
+                                      onClick={() =>
+                                        handleUnitQuantityChange(
+                                          index,
+                                          Math.max(1, item.unit_quantity - 1)
+                                        )
+                                      }
+                                      className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="text-sm text-[#6b4c3b]">
+                                      {item.unit_quantity}
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        handleUnitQuantityChange(
+                                          index,
+                                          item.unit_quantity + 1
+                                        )
+                                      }
+                                      className="w-7 h-7 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                )
+                              )}
                               <div className="border-t border-gray-200 pt-3 mt-3">
                                 <div className="flex justify-between text-sm">
                                   <span>Total:</span>

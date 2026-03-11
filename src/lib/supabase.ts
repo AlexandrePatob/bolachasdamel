@@ -273,20 +273,44 @@ export async function getOrder(id: string) {
   return data as OrderWithItems;
 }
 
-// Admin
-export async function getAdminStats() {
-  const { data: orders, error: ordersError } = await supabase
-    .from("orders")
-    .select("*");
+// Admin - date range helpers
+function getDateRangeFromDays(days: number) {
+  const today = new Date();
+  const from = new Date(today);
+  from.setDate(from.getDate() - days);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(today);
+  to.setHours(23, 59, 59, 999);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+export async function getAdminStats(
+  from?: string,
+  to?: string,
+  options?: { all?: boolean; days?: number }
+) {
+  let query = supabase.from("orders").select("*");
+
+  if (options?.all) {
+    // No date filter
+  } else if (from && to) {
+    query = query.gte("created_at", from).lte("created_at", to);
+  } else {
+    const days = options?.days ?? 15;
+    const range = getDateRangeFromDays(days);
+    query = query.gte("created_at", range.from).lte("created_at", range.to);
+  }
+
+  const { data: orders, error: ordersError } = await query;
 
   if (ordersError) throw ordersError;
 
-  const total_orders = orders.length;
-  const total_revenue = orders.reduce(
+  const total_orders = orders?.length ?? 0;
+  const total_revenue = (orders ?? []).reduce(
     (sum, order) => sum + order.total_amount,
     0
   );
-  const orders_by_status = orders.reduce((acc, order) => {
+  const orders_by_status = (orders ?? []).reduce((acc, order) => {
     acc[order.status] = (acc[order.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -364,8 +388,12 @@ export async function updateOrderShippingFee(id: string, shipping_fee: number) {
   return updatedOrder;
 }
 
-export async function getAdminOrders() {
-  const { data, error } = await supabase
+export async function getAdminOrders(
+  from?: string,
+  to?: string,
+  options?: { all?: boolean; days?: number }
+) {
+  let query = supabase
     .from("orders")
     .select(
       `
@@ -381,6 +409,18 @@ export async function getAdminOrders() {
     `
     )
     .order("created_at", { ascending: false });
+
+  if (options?.all) {
+    // No date filter
+  } else if (from && to) {
+    query = query.gte("created_at", from).lte("created_at", to);
+  } else {
+    const days = options?.days ?? 15;
+    const range = getDateRangeFromDays(days);
+    query = query.gte("created_at", range.from).lte("created_at", range.to);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return data;
