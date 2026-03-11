@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface Tab {
   id: string;
@@ -21,7 +20,11 @@ const Navigation = ({
   onCategoryChange,
 }: NavigationProps) => {
   const [activeTab, setActiveTab] = useState(tabs[0].id);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const allCategories = [
+    ...tabs.map((t) => ({ id: t.id, label: t.label })),
+    ...otherCategories,
+  ];
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -29,74 +32,37 @@ const Navigation = ({
   };
 
   return (
-    <div className="w-full px-2 md:px-8">
-      <div className="flex justify-center items-center gap-2 md:gap-4 mb-8">
-        {tabs.map((tab) => (
-          <motion.button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={`px-4 md:px-6 py-2 md:py-3 rounded-full text-base md:text-lg font-medium transition-all duration-300 ${
-              activeTab === tab.id
-                ? "bg-pink-600 text-white shadow-lg"
-                : "text-pink-600 hover:bg-pink-50"
-            }`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {tab.label}
-          </motion.button>
-        ))}
-
-        {otherCategories.length > 0 && (
-          <div className="relative">
+    <div className="w-full">
+      {/* Scrollable pill row */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 px-1 mb-8">
+        {allCategories.map((cat) => {
+          const isActive = activeTab === cat.id;
+          return (
             <motion.button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className={`px-4 md:px-6 py-2 md:py-3 rounded-full text-base md:text-lg font-medium transition-all duration-300 flex items-center gap-2 ${
-                otherCategories.some((cat) => cat.id === activeTab)
-                  ? "bg-pink-600 text-white shadow-lg"
-                  : "text-pink-600 hover:bg-pink-50"
-              }`}
-              whileHover={{ scale: 1.05 }}
+              key={cat.id}
+              onClick={() => handleTabChange(cat.id)}
               whileTap={{ scale: 0.95 }}
+              className={`relative flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                isActive
+                  ? "bg-pink-600 text-white shadow-sm shadow-pink-200"
+                  : "bg-white text-gray-500 hover:text-pink-600 hover:bg-pink-50 border border-gray-100"
+              }`}
             >
-              <span>
-                {otherCategories.find((cat) => cat.id === activeTab)?.label ||
-                  "Outras Categorias"}
-              </span>
-              <ChevronDown
-                className={`w-5 h-5 transition-transform duration-300 ${
-                  isDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </motion.button>
-
-            <AnimatePresence>
-              {isDropdownOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-pink-100 py-2 z-50"
-                >
-                  {otherCategories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => {
-                        handleTabChange(category.id);
-                        setIsDropdownOpen(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-pink-50 transition-colors text-gray-600 hover:text-pink-600"
-                    >
-                      {category.label}
-                    </button>
-                  ))}
-                </motion.div>
+              {cat.label}
+              {isActive && (
+                <motion.span
+                  layoutId="nav-active-pill"
+                  className="absolute inset-0 rounded-full bg-pink-600 -z-10"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
               )}
-            </AnimatePresence>
-          </div>
-        )}
+            </motion.button>
+          );
+        })}
       </div>
-      {tabs.find(tab => tab.id === activeTab)?.content}
+
+      {/* Active tab content (for tabs with embedded content like "Quem Somos") */}
+      {tabs.find((tab) => tab.id === activeTab)?.content}
     </div>
   );
 };

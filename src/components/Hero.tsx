@@ -1,72 +1,81 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
 
 export default function Hero() {
   return (
-    <div className="relative bg-gradient-to-b from-pink-50 to-white overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23BE185D' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        />
-      </div>
+    <div className="relative overflow-hidden bg-gradient-to-br from-[#ffe0ef] via-[#ffeef7] to-[#fff5fb]">
+      {/* Background dots */}
+      <div
+        className="absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage: `radial-gradient(circle, #BE185D 1.5px, transparent 1.5px)`,
+          backgroundSize: "22px 22px",
+        }}
+      />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-center justify-between py-8 md:py-12">
-          {/* Logo and Text */}
-          <div className="flex-1 text-center md:text-left mb-8 md:mb-0">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h1 className="text-3xl md:text-4xl font-bold text-pink-600 mb-4">
-                Bolachas Artesanais
-              </h1>
-              <p className="text-lg text-gray-600 max-w-md mx-auto md:mx-0">
-                Doces momentos feitos com carinho para celebrar o amor das mães
-              </p>
-            </motion.div>
-          </div>
+      {/* Decorative blobs */}
+      <div className="absolute -top-10 -right-10 w-56 h-56 rounded-full bg-pink-300 opacity-20 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-6 -left-6 w-40 h-40 rounded-full bg-pink-200 opacity-25 blur-2xl pointer-events-none" />
 
-          {/* Logo Image */}
+      <div className="relative max-w-2xl md:max-w-4xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row items-center gap-4 md:gap-8">
+        {/* Text block */}
+        <div className="flex-1 text-center md:text-left">
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="relative w-32 h-32 md:w-40 md:h-40"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-1.5 bg-white/70 backdrop-blur-sm text-pink-600 text-xs font-semibold px-3 py-1 rounded-full border border-pink-200 mb-3"
           >
-            <div className="absolute inset-0 rounded-full overflow-hidden border-4 border-[#fff9f0] shadow-xl">
-              <Image
-                src="/images/system/logo.png"
-                alt="Bolachas da Mel Logo"
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
+            <Sparkles className="w-3 h-3" />
+            Feito artesanalmente com amor
           </motion.div>
+
+          <motion.h2
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-3xl md:text-4xl font-bold text-gray-800 leading-tight mb-2"
+          >
+            Bolachas que contam
+            <br />
+            <span className="text-pink-600">histórias de carinho</span>
+          </motion.h2>
+
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-gray-500 text-sm md:text-base max-w-sm mx-auto md:mx-0 leading-relaxed"
+          >
+            Cada bolacha é decorada à mão para tornar seu momento especial e inesquecível.
+          </motion.p>
         </div>
+
+        {/* Decorative tags */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="hidden md:flex flex-col gap-2"
+        >
+          {["Artesanal", "100% personalizado", "Entrega em Curitiba"].map((tag) => (
+            <span
+              key={tag}
+              className="bg-white/80 backdrop-blur-sm text-pink-700 text-xs font-medium px-4 py-2 rounded-full border border-pink-100 shadow-sm whitespace-nowrap"
+            >
+              {tag}
+            </span>
+          ))}
+        </motion.div>
       </div>
 
-      {/* Decorative Wave */}
+      {/* Wave bottom */}
       <div className="absolute bottom-0 left-0 right-0">
-        <svg
-          className="w-full h-12 md:h-16 text-white"
-          viewBox="0 0 1440 100"
-          preserveAspectRatio="none"
-          fill="currentColor"
-        >
-          <path
-            d="M0,50 C150,100 350,0 500,50 C650,100 850,0 1000,50 C1150,100 1350,0 1440,50 L1440,100 L0,100 Z"
-            fill="currentColor"
-          />
+        <svg viewBox="0 0 1440 28" fill="white" preserveAspectRatio="none" className="w-full h-7">
+          <path d="M0,14 C360,28 1080,0 1440,14 L1440,28 L0,28 Z" />
         </svg>
       </div>
     </div>

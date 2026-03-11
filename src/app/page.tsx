@@ -2,8 +2,6 @@
 import React, { useState } from "react";
 import Hero from "../components/Hero";
 import AboutUs from "../components/AboutUs";
-import EasterFavorites from "../components/FeaturedProducts";
-import FeaturedSection from "../components/FeaturedSection";
 import Footer from "../components/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import Navigation from "../components/Navigation";
@@ -13,7 +11,7 @@ import { motion } from "framer-motion";
 import { CartItem } from "@/types/cart";
 import ProductList from "@/components/ProductList";
 import KitBuilder from "@/components/KitBuilder";
-
+import { Gift } from "lucide-react";
 
 export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -94,15 +92,8 @@ export default function Home() {
   ];
 
   const tabs = [
-    {
-      id: "maes",
-      label: "Dia das Mães",
-    },
-    {
-      id: "sobre",
-      label: "Quem Somos",
-      content: <AboutUs />,
-    },
+    { id: "maes", label: "Dia das Mães" },
+    { id: "sobre", label: "Quem Somos", content: <AboutUs /> },
   ];
 
   const handleCategoryChange = (categoryId: string) => {
@@ -114,98 +105,84 @@ export default function Home() {
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.4 }}
         className="min-h-screen bg-gradient-to-b from-[#ffe9f3] to-white"
       >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <Hero />
-        </motion.div>
-        <motion.div
-          className="container mx-auto px-4 py-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <Navigation
-            tabs={tabs}
-            otherCategories={otherCategories}
-            onCategoryChange={handleCategoryChange}
-          />
+        <Hero />
+
+        <div className="container mx-auto px-4 py-8 max-w-2xl md:max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <Navigation
+              tabs={tabs}
+              otherCategories={otherCategories}
+              onCategoryChange={handleCategoryChange}
+            />
+          </motion.div>
+
           {activeCategory === "maes" && (
-            <div className="mt-8">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              {/* Kit Builder banner — elegant, not loud */}
               <motion.button
                 onClick={() => setIsKitBuilderOpen(true)}
-                className="relative w-full max-w-md mx-auto block bg-gradient-to-r from-pink-500 to-pink-600 text-white py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 mb-12 overflow-hidden"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.985 }}
+                className="w-full flex items-center gap-4 bg-white border border-pink-100 rounded-2xl px-5 py-4 mb-8 shadow-sm hover:shadow-md hover:border-pink-200 transition-all duration-200 cursor-pointer text-left"
               >
-                <motion.div
-                  className="absolute inset-0 border-2 border-pink-300 rounded-lg"
-                  animate={{
-                    opacity: [1, 0.2, 1],
-                    boxShadow: [
-                      "0 0 0 0 rgba(244, 114, 182, 0.8)",
-                      "0 0 0 4px rgba(244, 114, 182, 0.2)",
-                      "0 0 0 0 rgba(244, 114, 182, 0.8)"
-                    ]
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
-                <div className="relative z-10">
-                  <h3 className="text-2xl font-bold mb-2">
-                    🎁 Monte seu Kit Exclusivo
-                  </h3>
-                  <p className="text-sm opacity-90">
-                    Clique e crie um kit personalizado com os melhores produtos
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
+                  <Gift className="w-5 h-5 text-pink-500" strokeWidth={1.8} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 leading-tight">
+                    Monte seu Kit Exclusivo
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Crie um kit personalizado com os melhores produtos
                   </p>
                 </div>
+                <svg
+                  className="w-4 h-4 text-pink-400 flex-shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </motion.button>
-              <ProductList
-                category={activeCategory}
-                onOrderClick={handleOrderClick}
-              />
-            </div>
+
+              <ProductList category={activeCategory} onOrderClick={handleOrderClick} />
+            </motion.div>
           )}
+
           {activeCategory !== "sobre" && activeCategory !== "maes" && (
-            <ProductList
-              category={activeCategory}
-              onOrderClick={handleOrderClick}
-            />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              <ProductList category={activeCategory} onOrderClick={handleOrderClick} />
+            </motion.div>
           )}
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-        >
-          <Footer />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
-        >
-          <WhatsAppButton />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
-        >
-          <CartIcon
-            itemCount={cartItems.length}
-            onClick={() => setIsCartOpen(true)}
-            isNewItem={isNewItem}
-          />
-        </motion.div>
+        </div>
+
+        <Footer />
+
+        <WhatsAppButton />
+
+        <CartIcon
+          itemCount={cartItems.length}
+          onClick={() => setIsCartOpen(true)}
+          isNewItem={isNewItem}
+        />
+
         <CartModal
           isOpen={isCartOpen}
           onClose={() => setIsCartOpen(false)}
@@ -215,6 +192,7 @@ export default function Home() {
           onClearCart={handleClearCart}
           isKitBuilder={isKitBuilder}
         />
+
         <KitBuilder
           isOpen={isKitBuilderOpen}
           onClose={() => setIsKitBuilderOpen(false)}
