@@ -60,6 +60,26 @@ export default function AdminLayout({
                   >
                     Histórico
                   </Link>
+                  <Link
+                    href="/admin/produtos"
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      pathname.startsWith("/admin/produtos")
+                        ? "bg-[#6b4c3b] text-white"
+                        : "text-[#6b4c3b] hover:bg-pink-100"
+                    }`}
+                  >
+                    Produtos
+                  </Link>
+                  <Link
+                    href="/admin/categorias"
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      pathname.startsWith("/admin/categorias")
+                        ? "bg-[#6b4c3b] text-white"
+                        : "text-[#6b4c3b] hover:bg-pink-100"
+                    }`}
+                  >
+                    Categorias
+                  </Link>
                 </div>
               )}
             </div>

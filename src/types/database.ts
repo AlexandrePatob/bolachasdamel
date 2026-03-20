@@ -31,11 +31,44 @@ export interface Product {
     image: string;
     category: string;
     has_chocolate_option: boolean;
+    is_available: boolean;
     created_at: string;
-    updated_at: string;
     product_options?: ProductOption[];
     product_quantity_rules?: ProductQuantityRule[];
     unit_quantity: number;
+}
+
+export interface Category {
+    id: string;
+    label: string;
+    sort_order: number;
+    is_featured: boolean;
+    is_active: boolean;
+}
+
+export interface CreateProductInput {
+    name: string;
+    description: string;
+    price: number;
+    image: string;
+    category: string;
+    has_chocolate_option: boolean;
+    is_available: boolean;
+    unit_quantity: number;
+}
+
+export interface ProductOptionInput {
+    type: string;
+    name: string;
+    price_delta: number;
+    image?: string | null;
+}
+
+export interface ProductQuantityRuleInput {
+    min_qty: number;
+    max_qty?: number | null;
+    price?: number | null;
+    extra_per_unit?: number | null;
 }
 
 export interface Customer {

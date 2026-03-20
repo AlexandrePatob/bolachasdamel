@@ -11,7 +11,7 @@ export interface QuantityValidationResult {
  * Para pacotes fechados: min_qty/max_qty = unidades por pacote; price = preço por pacote.
  * Ex.: Quadradinho 6 un = R$ 13,90; 12 un = R$ 27,90.
  */
-function isFixedPackRules(rules: ProductQuantityRule[]): boolean {
+export function isFixedPackRules(rules: ProductQuantityRule[]): boolean {
   return (
     rules.length > 0 &&
     rules.every(
