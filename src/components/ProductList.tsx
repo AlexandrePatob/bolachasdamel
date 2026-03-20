@@ -267,6 +267,7 @@ const ProductList = ({ category, onOrderClick, showTitle = true, isKitBuilder = 
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
+                  priority={index < 4}
                 />
                 <span className="absolute top-2 left-2 bg-white/95 text-pink-600 text-[10px] font-semibold px-2 py-1 rounded-md border border-pink-100">
                   Artesanal
