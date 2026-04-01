@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { Order, OrderWithItems } from "@/types/database";
+import { Order, OrderWithItems, CreateProductInput, ProductOptionInput, ProductQuantityRuleInput } from "@/types/database";
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
@@ -9,6 +9,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : supabase;
 
 // Products
 export async function getProducts(category?: string) {
@@ -57,6 +62,7 @@ export async function getCategories() {
   const { data, error } = await supabase
     .from("categories")
     .select("id, label, sort_order, is_featured")
+    .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
   if (error) throw error;
@@ -438,6 +444,183 @@ export async function verifyAdminCredentials(email: string, password: string) {
 
 export async function deleteOrder(id: string) {
   const { error } = await supabase.from("orders").delete().eq("id", id);
+
+  if (error) throw error;
+}
+
+// ─── Admin: Products ────────────────────────────────────────────────────────
+
+export async function getAllProductsAdmin() {
+  const { data, error } = await supabaseAdmin
+    .from("products")
+    .select(
+      `
+      id, name, description, price, image, has_chocolate_option,
+      category, unit_quantity, is_available, created_at,
+      product_options ( id, type, name, price_delta, image ),
+      product_quantity_rules ( id, min_qty, max_qty, price, extra_per_unit )
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createProduct(data: CreateProductInput) {
+  const { data: product, error } = await supabaseAdmin
+    .from("products")
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return product;
+}
+
+export async function updateProduct(id: string, data: Partial<CreateProductInput>) {
+  const { data: product, error } = await supabaseAdmin
+    .from("products")
+    .update(data)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return product;
+}
+
+export async function setProductAvailability(id: string, available: boolean) {
+  const { error } = await supabaseAdmin
+    .from("products")
+    .update({ is_available: available })
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function upsertProductOptions(productId: string, options: ProductOptionInput[]) {
+  const { error: deleteError } = await supabaseAdmin
+    .from("product_options")
+    .delete()
+    .eq("product_id", productId);
+
+  if (deleteError) throw deleteError;
+
+  if (options.length === 0) return;
+
+  const { error } = await supabaseAdmin
+    .from("product_options")
+    .insert(options.map((o) => ({ ...o, product_id: productId })));
+
+  if (error) throw error;
+}
+
+export async function upsertProductQuantityRules(productId: string, rules: ProductQuantityRuleInput[]) {
+  const { error: deleteError } = await supabaseAdmin
+    .from("product_quantity_rules")
+    .delete()
+    .eq("product_id", productId);
+
+  if (deleteError) throw deleteError;
+
+  if (rules.length === 0) return;
+
+  const { error } = await supabaseAdmin
+    .from("product_quantity_rules")
+    .insert(rules.map((r) => ({ ...r, product_id: productId })));
+
+  if (error) throw error;
+}
+
+export async function uploadProductImage(file: File, fileName: string): Promise<string> {
+  const BUCKET = "product-images";
+  const path = `${Date.now()}-${fileName}`;
+
+  const { error } = await supabaseAdmin.storage.from(BUCKET).upload(path, file, {
+    upsert: false,
+    contentType: file.type,
+  });
+
+  if (error) throw error;
+
+  const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function deleteProductImage(publicUrl: string): Promise<void> {
+  const BUCKET = "product-images";
+  const marker = `/storage/v1/object/public/${BUCKET}/`;
+  const path = publicUrl.split(marker)[1];
+  if (!path) return;
+  await supabaseAdmin.storage.from(BUCKET).remove([path]);
+}
+
+export async function upsertProductRpc(
+  id: string | null,
+  data: Partial<CreateProductInput>,
+  options: ProductOptionInput[],
+  rules: ProductQuantityRuleInput[]
+) {
+  const { data: result, error } = await supabaseAdmin.rpc("upsert_product", {
+    p_id: id ?? null,
+    p_data: data,
+    p_options: options,
+    p_rules: rules,
+  });
+
+  if (error) throw error;
+  return result;
+}
+
+// ─── Admin: Categories ──────────────────────────────────────────────────────
+
+export async function getAllCategoriesAdmin() {
+  const { data, error } = await supabaseAdmin
+    .from("categories")
+    .select("id, label, sort_order, is_featured, is_active")
+    .order("sort_order", { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createCategory(data: {
+  label: string;
+  sort_order: number;
+  is_featured: boolean;
+  is_active: boolean;
+}) {
+  const { data: category, error } = await supabaseAdmin
+    .from("categories")
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return category;
+}
+
+export async function updateCategory(
+  id: string,
+  data: Partial<{ label: string; sort_order: number; is_featured: boolean; is_active: boolean }>
+) {
+  const { data: category, error } = await supabaseAdmin
+    .from("categories")
+    .update(data)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return category;
+}
+
+export async function setCategoryActive(id: string, active: boolean) {
+  const { error } = await supabaseAdmin
+    .from("categories")
+    .update({ is_active: active })
+    .eq("id", id);
 
   if (error) throw error;
 }
