@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint",
+    "test:quote": "node scripts/test-quote.cjs",
     "db:push": "supabase db push",
     "db:link": "supabase link"
   },
